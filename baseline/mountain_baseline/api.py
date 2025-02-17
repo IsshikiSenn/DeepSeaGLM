@@ -298,8 +298,8 @@ def calculate_total_energy(start_time, end_time, device_name="折臂吊车"):
         )
         if filtered_data is None:
             return None
-        total_energy_kWh = filtered_data["energy_kWh"].sum()
-        return round(total_energy_kWh, 2)
+        total_energy = filtered_data["energy_kWh"].sum()
+        return round(total_energy, 2)
     except Exception as e:
         raise ValueError(f"计算能耗时出错: {e}")
 
@@ -369,9 +369,9 @@ def calculate_energy_consumption(start_time, end_time):
     )
 
     # 计算总能耗
-    total_energy_kWh = filtered_data["energy_kWh"].sum()
+    total_energy = filtered_data["energy_kWh"].sum()
 
-    return round(total_energy_kWh, 2)
+    return round(total_energy, 2)
 
 
 def query_device_parameter(parameter_name_cn):
@@ -464,26 +464,27 @@ def calculate_total_energy_consumption(start_time, end_time, query_type="all"):
     )
 
     # 计算总能耗
-    total_energy_kWh_1 = filtered_data_1["energy_kWh"].sum()
-    total_energy_kWh_2 = filtered_data_2["energy_kWh"].sum()
+    total_energy_1 = filtered_data_1["energy_kWh"].sum()
+    total_energy_2 = filtered_data_2["energy_kWh"].sum()
 
     # 根据查询类型返回相应的能耗
     if query_type == "1":
-        return round(total_energy_kWh_1, 2)
+        return round(total_energy_1, 2)
     elif query_type == "2":
-        return round(total_energy_kWh_2, 2)
+        return round(total_energy_2, 2)
     elif query_type == "all":
-        return round(total_energy_kWh_1 + total_energy_kWh_2, 2)
+        return round(total_energy_1 + total_energy_2, 2)
     else:
         raise ValueError("query_type 参数无效，请输入 '1'、'2' 或 'all'")
 
 
-def get_device_status_by_time_range(start_time, end_time):
+def get_device_status_by_time_range(start_time, end_time, device_name):
     """
-    根据数据表名、开始时间和结束时间，查询设备在该时间段内的状态变化，并排除 status 为 'False' 的记录。
+    根据数据表名、开始时间和结束时间，查询某个设备在该时间段内的状态变化，并排除 status 为 'False' 的记录。
     参数:
     start_time (str): 开始时间，格式为 'YYYY-MM-DD HH:MM:SS'
     end_time (str): 结束时间，格式为 'YYYY-MM-DD HH:MM:SS'
+    device_name (str): 设备名称，可选值为 'A架'、'折臂吊车'、'定位设备'
 
     返回:
     dict: 包含设备状态变化的时间点和对应状态的字典，或错误信息
@@ -555,13 +556,17 @@ def get_device_status_by_time_range(start_time, end_time):
         }
 
     # 获取三个设备的状态变化
-    result1 = get_status_changes("Ajia_plc_1", "A架")
-    result2 = get_status_changes("device_13_11_meter_1311", "折臂吊车")
-    result3 = get_status_changes("Port3_ksbg_9", "定位设备")
+    results = []
+    if device_name == "A架":
+        results = get_status_changes("Ajia_plc_1", "A架")
+    if device_name == "折臂吊车":
+        results = get_status_changes("device_13_11_meter_1311", "折臂吊车")
+    if device_name == "定位设备":
+        results = get_status_changes("Port3_ksbg_9", "定位设备")
 
     # 过滤掉包含错误的结果
     results = [
-        result for result in [result1, result2, result3] if "error" not in result
+        result for result in results if "error" not in result
     ]
 
     # 返回结果和元数据
@@ -569,6 +574,146 @@ def get_device_status_by_time_range(start_time, end_time):
         "result": results,
         "metadata": {"start_time": start_time, "end_time": end_time},
     }
+
+def calculate_generator_energy_consumption(start_time, end_time):
+    """
+    计算指定时间范围内四个发电机的能耗。
+    Parameters:
+        start_time (datetime): 要计算能耗的时间段的开始时间。
+        end_time (datetime): 要计算能耗的时间段的结束时间。
+    Returns:
+        tuple: 包含四个发电机的总能耗（kWh）的元组，如果数据为空则返回 None。
+    """
+    file_path_1 = "database_in_use/Port1_ksbg_3.csv"
+    power_column_1 = "P1_66"  # 一号发电机功率,单位:kW
+
+    file_path_2 = "database_in_use/Port1_ksbg_3.csv"
+    power_column_2 = "P1_75"  # 二号发电机功率,单位:kW
+
+    file_path_3 = "database_in_use/Port2_ksbg_2.csv"
+    power_column_3 = "P2_51"  # 三号发电机功率,单位:kW
+
+    file_path_4 = "database_in_use/Port2_ksbg_3.csv"
+    power_column_4 = "P2_60"  # 四号发电机功率,单位:kW
+
+    try:
+        # 加载 CSV 文件
+        df1 = pd.read_csv(file_path_1)
+        df2 = pd.read_csv(file_path_2)
+        df3 = pd.read_csv(file_path_3)
+        df4 = pd.read_csv(file_path_4)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"文件未找到: {e}")
+    
+    # 确保时间列是 datetime 类型
+    try:
+        df1["csvTime"] = pd.to_datetime(df1["csvTime"])
+        df2["csvTime"] = pd.to_datetime(df2["csvTime"])
+        df3["csvTime"] = pd.to_datetime(df3["csvTime"])
+        df4["csvTime"] = pd.to_datetime(df4["csvTime"])
+    except Exception as e:
+        raise ValueError(f"时间列转换失败: {e}")
+
+    # 筛选特定时间范围内的数据
+    filtered_data_1 = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
+    filtered_data_2 = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
+    filtered_data_3 = df3[(df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)].copy()
+    filtered_data_4 = df4[(df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)].copy()
+
+    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_3.empty or filtered_data_4.empty:
+        return None
+
+    # 计算时间差（秒）
+    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_3.loc[:, "diff_seconds"] = (filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_4.loc[:, "diff_seconds"] = (filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1))
+
+    # 计算每个时间间隔的能耗（kWh）
+    filtered_data_1.loc[:, "energy_kWh"] = (
+            filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600
+    )
+    filtered_data_2.loc[:, "energy_kWh"] = (
+            filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600
+    )
+    filtered_data_3.loc[:, "energy_kWh"] = (
+            filtered_data_3["diff_seconds"] * filtered_data_3[power_column_3] / 3600
+    )
+    filtered_data_4.loc[:, "energy_kWh"] = (
+            filtered_data_4["diff_seconds"] * filtered_data_4[power_column_4] / 3600
+    )
+
+    # 计算总能耗
+    total_energy_1 = filtered_data_1["energy_kWh"].sum()
+    total_energy_2 = filtered_data_2["energy_kWh"].sum()
+    total_energy_3 = filtered_data_3["energy_kWh"].sum()
+    total_energy_4 = filtered_data_4["energy_kWh"].sum()
+
+    return total_energy_1, total_energy_2, total_energy_3, total_energy_4
+
+def check_ajia_angle(start_time, end_time):
+    """
+    检查在指定时间范围内的 A 架角度异常数据。
+    Params:
+        start_time (datetime): 起始时间。
+        end_time (datetime): 结束时间。
+    Returns:
+        list: 包含异常时间段的元组列表，每个元组包含异常开始时间和结束时间。如果没有异常数据，返回 None。
+    Exceptions:
+        FileNotFoundError: 如果 CSV 文件未找到。
+        ValueError: 如果时间列转换失败。
+    """
+    file_path = "database_in_use/Ajia_plc_1.csv"
+
+    # 读取 CSV 文件
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"文件 {file_path} 未找到")
+
+    # 确保时间列是 datetime 类型
+    try:
+        df["csvTime"] = pd.to_datetime(df["csvTime"])
+    except Exception as e:
+        raise ValueError(f"时间列转换失败: {e}")
+
+    # 筛选特定时间范围内的数据
+    filtered_data: pd.DataFrame = df[(df["csvTime"] >= start_time) & (df["csvTime"] < end_time)].copy()
+
+    # 检查数据是否存在
+    if filtered_data.empty:
+        print(f"在时间范围 {start_time} 到 {end_time} 未找到数据")
+        return None
+
+    error_time = []
+    error_status = False
+    error_start_time = ""
+    error_end_time = ""
+    for index, row in filtered_data.iterrows():
+        if row["Ajia-0_v"] == 'error' or row["Ajia-1_v"] == 'error':
+            if not error_status:
+                continue
+            else:
+                error_end_time = filtered_data.loc[index - 1, "csvTime"]
+                print("A架角度异常数据结束：", error_end_time)
+                error_time.append((error_start_time, error_end_time))
+                error_status = False
+                continue
+        if abs(float(row["Ajia-0_v"]) - float(row["Ajia-1_v"])) > 10:
+            if not error_status:
+                error_status = True
+                error_start_time = row["csvTime"]
+                print("A架角度异常数据开始：", error_start_time)
+        else:
+            if error_status:
+                error_end_time = filtered_data.loc[index - 1, "csvTime"]
+                print("A架角度异常数据结束：", error_end_time)
+                error_time.append((error_start_time, error_end_time))
+                error_status = False
+    print("A架角度异常数据时间段：", error_time)
+    return error_time
+        
+
 
 
 if __name__ == "__main__":

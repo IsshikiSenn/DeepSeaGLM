@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jul 28 10:41:39 2024
-
-@author: 86187
-"""
-
 tools_all = [
     {
         "type": "function",
@@ -48,7 +41,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_energy",
-            "description": "计算指定时间段内指定设备的总能耗。返回值为总能耗（kWh，float 类型）。",
+            "description": "计算指定时间段内指定设备（折臂吊车、一号门架、二号门架、绞车）的总能耗。返回值为总能耗（kWh，float 类型）。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -116,7 +109,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "get_device_status_by_time_range",
-            "description": "根据开始时间和结束时间，查询设备设备在进行什么动作。返回正在进行设备动作",
+            "description": "根据开始时间和结束时间，查询某个设备在进行什么动作。返回正在进行设备动作",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -130,8 +123,13 @@ tools_all = [
                         "format": "date-time",
                         "description": "查询的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
                     },
+                    "device_name": {
+                        "type": "string",
+                        "description": "设备名称，支持以下值：'A架'、'折臂吊车'、'定位设备'",
+                        "enum": ["A架", "折臂吊车", "定位设备"],
+                    },
                 },
-                "required": ["start_time", "end_time"],
+                "required": ["start_time", "end_time", "device_name"],
             },
         },
     },
@@ -216,6 +214,52 @@ tools_all = [
                         "enum": ["1","2","all"],
                         "description": "查询类型，可选值为 '1'（一号推进）、'2'（二号推进）、'all'（整个推进系统）",
                         "default": "all",
+                    },
+                },
+                "required": ["start_time", "end_time"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_generator_energy_consumption",
+            "description": "计算指定时间范围内四个发电机的能耗。返回值为包含四个发电机的总能耗（kWh）的元组，如果数据为空则返回 None。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "查询的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "查询的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
+                    },
+                },
+                "required": ["start_time", "end_time"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_ajia_angle",
+            "description": "检查在指定时间范围内的 A 架角度异常数据。返回包含异常时间段的元组列表，每个元组包含异常开始时间和结束时间。如果没有异常数据，返回 None。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "起始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
                     },
                 },
                 "required": ["start_time", "end_time"],

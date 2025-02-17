@@ -21,7 +21,7 @@ def create_chat_completion(messages, model="glm-4-plus"):
     response = client.chat.completions.create(
         model=model, stream=False, messages=messages
     )
-    print("AI回复:", response.choices[0].message)
+    print("! AI回复:", response.choices[0].message.content)
     return response
 
 def choose_table(question):
@@ -49,8 +49,8 @@ def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
             messages=messages,
             tools=tools,
         )
-        print("尝试次数：", attempt)
-        print("AI回复:", response.choices[0].message)
+        print("! 尝试次数：", attempt)
+        print("! AI回复:", response.choices[0].message.content)
         if (
                 response.choices
                 and response.choices[0].message
@@ -77,6 +77,8 @@ function_map = {
     "query_device_parameter": api.query_device_parameter,
     "get_device_status_by_time_range": api.get_device_status_by_time_range,
     "calculate_total_energy_consumption": api.calculate_total_energy_consumption,
+    "calculate_generator_energy_consumption": api.calculate_generator_energy_consumption,
+    "check_ajia_angle": api.check_ajia_angle,
 }
 
 
@@ -94,7 +96,6 @@ def get_answer_2(question, tools, api_look: bool = True):
         # 第一次调用模型
         response = glm4_create(6, messages, filtered_tools)
         messages.append(response.choices[0].message.model_dump())
-        print("更新后的messages:", messages)
         function_results = []
         # 最大迭代次数
         max_iterations = 6
@@ -104,15 +105,15 @@ def get_answer_2(question, tools, api_look: bool = True):
 
             for tool_call in response.choices[0].message.tool_calls:
                 # 获取工具调用信息
-                print("调用函数:", tool_call)
+                print("! 调用函数:", tool_call)
                 args = json.loads(tool_call.function.arguments)
                 function_name = tool_call.function.name
 
                 # 执行工具函数
                 if function_name in function_map:
-                    print(f"执行工具函数: {function_name}，参数: {args}")
+                    print(f"! 执行工具函数: {function_name}，参数: {args}")
                     function_result = function_map[function_name](**args)
-                    print(f"工具函数执行结果: {function_result}")
+                    print(f"! 工具函数执行结果: {function_result}")
 
                     function_results.append(function_result)
                     messages.append(
@@ -125,11 +126,9 @@ def get_answer_2(question, tools, api_look: bool = True):
                 else:
                     print(f"未找到对应的工具函数: {function_name}")
                     break
-            print("更新后的messages:", messages)
             response = glm4_create(8, messages, filtered_tools)
         messages.append(response.choices[0].message.model_dump())
         messages.append({"role": "user", "content": "请根据上述回答过程，简洁地回答问题。"})
-        print("更新后的messages:", messages)
         response = glm4_create(8, messages, filtered_tools)
         return response.choices[0].message.content, str(function_results)
     except Exception as e:
@@ -140,27 +139,32 @@ def select_api_based_on_question(question, tools):
     api_list_filter = []
     # 根据问题内容选择相应的 API
     if "能耗" in question:
-        print("问题包含：能耗，提供Api：calculate_total_energy")
+        print("! 问题包含：能耗，提供Api：calculate_total_energy")
         api_list_filter.append("calculate_total_energy")
         if "推进系统"in question:
-            print("问题包含：推进系统，提供Api：calculate_total_energy_consumption")
+            print("! 问题包含：推进系统，提供Api：calculate_total_energy_consumption")
             api_list_filter.append("calculate_total_energy_consumption")
-        if "甲板机械设备" in question:
-            print("问题包含：甲板机械设备，提供Api：calculate_total_deck_machinery_energy")
+        if "甲板机械设备" in question or "折臂吊车" in question:
+            print("! 问题包含：甲板机械设备，提供Api：calculate_total_deck_machinery_energy")
             api_list_filter.append("calculate_total_deck_machinery_energy")
-            
-    if "动作" in question or "DP" in question:
-        print("问题包含：动作、DP，提供Api：get_device_status_by_time_range")
+        if "发电机" in question:
+            print("! 问题包含：发电机，提供Api：calculate_generator_energy_consumption")
+            api_list_filter.append("calculate_generator_energy_consumption")        
+    if "动作" in question or "DP" in question or "摆" in question or "开机" in question:
+        print("! 问题包含：动作，提供Api：get_device_status_by_time_range")
         api_list_filter.append("get_device_status_by_time_range")
         question = question + "动作直接引用不要修改,如【A架摆回】"
     if "开机时长" in question:
-        print("问题包含：开机时长，供Api：calculate_uptime")
+        print("! 问题包含：开机时长，供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
     if "运行时长" in question and "实际运行时长" not in question:
-        print("问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
+        print("! 问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
+    if "A架的角度数据" in question:
+        print("! 问题包含：A架的角度数据，提供Api：check_ajia_angle")
+        api_list_filter.append("check_ajia_angle")
 
-    if api_list_filter.__len__() == 0:
+    if len(api_list_filter) == 0:
         # 如果问题不匹配上述条件，则根据表名选择 API
         table_name_string = choose_table(question)
         with open("dict.json", "r", encoding="utf-8") as file:
@@ -170,11 +174,11 @@ def select_api_based_on_question(question, tools):
             ]
 
             if "设备参数详情表" in [item["数据表名"] for item in table_name]:
-                print("使用设备参数详情表，提供Api：query_device_parameter")
+                print("! 使用设备参数详情表，提供Api：query_device_parameter")
                 api_list_filter.append("query_device_parameter")
                 content_p_1 = str(table_name) + question  # 补充 content_p_1
             else:
-                print("使用数据表，提供Api：get_table_data")
+                print("! 使用数据表，提供Api：get_table_data")
                 api_list_filter.append("get_table_data")
                 content_p_1 = str(table_name) + question
 
@@ -206,8 +210,10 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = enhanced_prompt + "（A架的开启时间以A架开机这个动作发生的时间为准，其他动作发生的时间不算。）"
     if "A架开机" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（A架开机就是“A架”这个设备发生“开机”这个动作。）"
+    # if "A架的角度数据出现了异常" in enhanced_prompt:
+    #     enhanced_prompt = enhanced_prompt + "（A架的角度数据出现了异常，指的是A架的左/右角度数据出现了异常。应先查询A架开机到关机的时间段，再检查各个时间段内的数据是否有异常。）"
 
-    print("增强提示词：", enhanced_prompt)
+    print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
 
 def run_conversation_xietong(question):
@@ -224,7 +230,7 @@ def run_conversation_xietong(question):
 
 def get_answer(question):
     try:
-        print(f"尝试解决问题：{question}")
+        print(f"! 尝试解决问题：{question}")
         last_answer = run_conversation_xietong(question)
         last_answer = last_answer.replace(" ", "")
         return last_answer
@@ -235,7 +241,7 @@ def get_answer(question):
 if __name__ == "__main__":
     with open("../../assets/question.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
-        question = question_list[32]["question"]
+        question = question_list[41]["question"]
         aa = get_answer(question)
         print("*******************最终答案***********************")
         print(aa)
