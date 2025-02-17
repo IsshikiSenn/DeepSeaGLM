@@ -3,6 +3,7 @@ from zhipuai import ZhipuAI
 import tools
 import api
 import os
+from initial_prompt import initial_prompt
 
 folders = ["database_in_use", "data"]
 if any(not os.path.exists(folder) for folder in folders):
@@ -75,6 +76,7 @@ function_map = {
     "calculate_total_deck_machinery_energy": api.calculate_total_deck_machinery_energy,
     "query_device_parameter": api.query_device_parameter,
     "get_device_status_by_time_range": api.get_device_status_by_time_range,
+    "calculate_total_energy_consumption": api.calculate_total_energy_consumption,
 }
 
 
@@ -85,7 +87,7 @@ def get_answer_2(question, tools, api_look: bool = True):
             {
                 "role": "system",
                 "content": 
-                "你是深远海船舶设备数据分析专家，能够使用用户提供的函数来回答问题。不要假设或猜测传入函数的参数值。如果用户的描述不明确，请要求用户提供必要信息。你的回答应该尽可能使用自然语言描述，减少使用结构化的数据，省略数值计算的过程。",
+                initial_prompt,
             },
             {"role": "user", "content": question},
         ]
@@ -102,7 +104,7 @@ def get_answer_2(question, tools, api_look: bool = True):
 
             for tool_call in response.choices[0].message.tool_calls:
                 # 获取工具调用信息
-                print("tool_call:", tool_call)
+                print("调用函数:", tool_call)
                 args = json.loads(tool_call.function.arguments)
                 function_name = tool_call.function.name
 
@@ -125,57 +127,57 @@ def get_answer_2(question, tools, api_look: bool = True):
                     break
             print("更新后的messages:", messages)
             response = glm4_create(8, messages, filtered_tools)
+        messages.append(response.choices[0].message.model_dump())
+        messages.append({"role": "user", "content": "请根据上述回答过程，简洁地回答问题。"})
+        print("更新后的messages:", messages)
+        response = glm4_create(8, messages, filtered_tools)
         return response.choices[0].message.content, str(function_results)
     except Exception as e:
         print(f"Error generating answer for question: {question}, {e}")
         return None, None
 
 def select_api_based_on_question(question, tools):
+    api_list_filter = []
     # 根据问题内容选择相应的 API
-    if "甲板机械设备" in question and "能耗" in question:
-        print("问题包含：甲板机械设备、能耗")
-        print("提供Api：calculate_total_deck_machinery_energy")
-        api_list_filter = ["calculate_total_deck_machinery_energy"]
-    elif "总能耗" in question:
-        print("问题包含：总能耗")
-        print("提供Api：calculate_total_energy")
-        api_list_filter = ["calculate_total_energy"]
-    elif "动作" in question:
-        print("问题包含：动作")
-        print("提供Api：get_device_status_by_time_range")
-        api_list_filter = ["get_device_status_by_time_range"]
+    if "能耗" in question:
+        print("问题包含：能耗，提供Api：calculate_total_energy")
+        api_list_filter.append("calculate_total_energy")
+        if "推进系统"in question:
+            print("问题包含：推进系统，提供Api：calculate_total_energy_consumption")
+            api_list_filter.append("calculate_total_energy_consumption")
+        if "甲板机械设备" in question:
+            print("问题包含：甲板机械设备，提供Api：calculate_total_deck_machinery_energy")
+            api_list_filter.append("calculate_total_deck_machinery_energy")
+            
+    if "动作" in question or "DP" in question:
+        print("问题包含：动作、DP，提供Api：get_device_status_by_time_range")
+        api_list_filter.append("get_device_status_by_time_range")
         question = question + "动作直接引用不要修改,如【A架摆回】"
-    elif "开机时长" in question:
-        print("问题包含：开机时长")
-        print("提供Api：calculate_uptime")
-        api_list_filter = ["calculate_uptime"]
-        if "运行时长" in question:
-            question = question.replace("运行时长", "开机时长")
-    elif "运行时长" in question and "实际运行时长" not in question:
-        print("问题包含：运行时长，不包含：实际运行时长")
-        print("提供Api：calculate_uptime")
-        api_list_filter = ["calculate_uptime"]
-        question = question.replace("运行时长", "开机时长")
-    else:
-        print("根据表名选择 Api")
+    if "开机时长" in question:
+        print("问题包含：开机时长，供Api：calculate_uptime")
+        api_list_filter.append("calculate_uptime")
+    if "运行时长" in question and "实际运行时长" not in question:
+        print("问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
+        api_list_filter.append("calculate_uptime")
+
+    if api_list_filter.__len__() == 0:
         # 如果问题不匹配上述条件，则根据表名选择 API
         table_name_string = choose_table(question)
         with open("dict.json", "r", encoding="utf-8") as file:
             table_data = json.load(file)
-        table_name = [
-            item for item in table_data if item["数据表名"] in table_name_string
-        ]
+            table_name = [
+                item for item in table_data if item["数据表名"] in table_name_string
+            ]
 
-        if "设备参数详情表" in [item["数据表名"] for item in table_name]:
-            print("使用设备参数详情表")
-            print("提供Api：query_device_parameter")
-            api_list_filter = ["query_device_parameter"]
-            content_p_1 = str(table_name) + question  # 补充 content_p_1
-        else:
-            print("使用数据表")
-            print("提供Api：get_table_data")
-            api_list_filter = ["get_table_data"]
-            content_p_1 = str(table_name) + question
+            if "设备参数详情表" in [item["数据表名"] for item in table_name]:
+                print("使用设备参数详情表，提供Api：query_device_parameter")
+                api_list_filter.append("query_device_parameter")
+                content_p_1 = str(table_name) + question  # 补充 content_p_1
+            else:
+                print("使用数据表，提供Api：get_table_data")
+                api_list_filter.append("get_table_data")
+                content_p_1 = str(table_name) + question
+
     # 过滤工具列表
     filtered_tools = [
         tool
@@ -189,14 +191,22 @@ def select_api_based_on_question(question, tools):
         return question, filtered_tools
 
 
-def enhanced(prompt, context=None, instructions=None, modifiers=None):
+def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     """
     增强提示词函数
     """
-    enhanced_prompt = prompt.replace("XX小时XX分钟", "XX小时XX分钟，01小时01分钟格式")
-    enhanced_prompt = prompt.replace("发生了什么", "什么设备在进行什么动作，动作直接引用不要修改,如【A架摆回】")
-    enhanced_prompt = prompt.replace("什么设备进行了什么关键动作", "什么设备进行了什么关键动作（列举所有进行了某个动作的设备）")
-    enhanced_prompt = prompt.replace("运行的平均时间", "运行的平均时间（每天运行时长的平均值）")
+    enhanced_prompt = prompt
+    enhanced_prompt = enhanced_prompt.replace("XX小时XX分钟", "XX小时XX分钟，01小时01分钟格式")
+    enhanced_prompt = enhanced_prompt.replace("发生了什么", "什么设备在进行什么动作，动作直接引用不要修改,如【A架摆回】")
+    enhanced_prompt = enhanced_prompt.replace("什么设备进行了什么关键动作", "什么设备进行了什么关键动作（列举所有进行了某个动作的设备）")
+    enhanced_prompt = enhanced_prompt.replace("运行的平均时间", "运行的平均时间（每天运行时长的平均值）")
+    if "作业" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt+"若问题没有特殊说明，则深海作业A的开始以ON_DP为标志。"
+    if "A架" in enhanced_prompt and "开启" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（A架的开启时间以A架开机这个动作发生的时间为准，其他动作发生的时间不算。）"
+    if "A架开机" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（A架开机就是“A架”这个设备发生“开机”这个动作。）"
+
     print("增强提示词：", enhanced_prompt)
     return enhanced_prompt
 
@@ -223,7 +233,9 @@ def get_answer(question):
         return "An error occurred while retrieving the answer."
 
 if __name__ == "__main__":
-    question = "2024/8/23 和 2024/8/24 上午A架运行的平均时间多少（四舍五入至整数分钟输出）"
-    aa = get_answer(question)
-    print("*******************最终答案***********************")
-    print(aa)
+    with open("../../assets/question.jsonl", "r", encoding="utf-8") as file:
+        question_list = [json.loads(line.strip()) for line in file]
+        question = question_list[32]["question"]
+        aa = get_answer(question)
+        print("*******************最终答案***********************")
+        print(aa)

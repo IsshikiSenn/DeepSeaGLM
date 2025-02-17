@@ -193,4 +193,33 @@ tools_all = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_total_energy_consumption",
+            "description": "计算指定时间范围内两个推进变频器或推进系统的总能耗，返回值为总能耗（kWh，float 类型），如果数据为空则返回 None。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "查询的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "查询的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
+                    },
+                    "query_type": {
+                        "type": "string",
+                        "enum": ["1","2","all"],
+                        "description": "查询类型，可选值为 '1'（一号推进）、'2'（二号推进）、'all'（整个推进系统）",
+                        "default": "all",
+                    },
+                },
+                "required": ["start_time", "end_time"],
+            },
+        },
+    },
 ]

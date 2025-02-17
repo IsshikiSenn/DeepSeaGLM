@@ -903,7 +903,7 @@ for item in result:
     if item['数据表名'] == 'device_13_11_meter_1311':
         item['字段含义'][-1] = '折臂吊车及小艇动作,包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座'
     if item['数据表名'] == 'Port3_ksbg_9':
-        item['字段含义'][-1] = 'DP动作,包括OFF_DP,ON_DP'
+        item['字段含义'][-1] = 'DP动作,包括OFF_DP和ON_DP,若问题中无特别说明，则ON_DP表示深海作业A的作业开始'
 # %%
 df1 = pd.read_excel(f'{data_path}设备参数详情.xlsx', sheet_name='字段释义')
 df1['含义1'] = df1['含义'].fillna('') + ',' + df1['备注'].fillna('')
