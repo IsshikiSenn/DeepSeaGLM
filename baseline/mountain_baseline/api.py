@@ -181,6 +181,7 @@ def get_table_data(table_name, start_time, end_time, columns=None, status=None):
     # 筛选指定时间范围内的数据
     filtered_data = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
+
     if filtered_data.empty:
         return {
             "error": f"在数据表 {table_name} 中未找到时间范围 {start_time} 到 {end_time} 的数据",
@@ -189,7 +190,10 @@ def get_table_data(table_name, start_time, end_time, columns=None, status=None):
 
     # 如果传入了 status 参数，则进一步筛选状态
     if status is not None:
+        if "关机" in status:
+            status = "关机"
         filtered_data = filtered_data[filtered_data["status"] == status]
+        # print(filtered_data)
         if filtered_data.empty:
             return {
                 "error": f"在数据表 {table_name} 中未找到状态为 {status} 的数据",
@@ -564,10 +568,16 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
     if device_name == "定位设备":
         results = get_status_changes("Port3_ksbg_9", "定位设备")
 
+
+
     # 过滤掉包含错误的结果
-    results = [
-        result for result in results if "error" not in result
-    ]
+    # results = [
+    #     result for result in results if "error" not in result
+    # ]
+
+    # 仅过滤掉错误结果，但保留正常数据
+    if isinstance(results, dict) and "error" in results:
+        results = []
 
     # 返回结果和元数据
     return {

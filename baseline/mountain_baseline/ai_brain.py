@@ -50,7 +50,7 @@ def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
             tools=tools,
         )
         print("! 尝试次数：", attempt)
-        print("! AI回复:", response.choices[0].message.content)
+        print("! AI回复:", response.choices[0].message)
         if (
                 response.choices
                 and response.choices[0].message
@@ -95,6 +95,11 @@ def get_answer_2(question, tools, api_look: bool = True):
         ]
         # 第一次调用模型
         response = glm4_create(6, messages, filtered_tools)
+
+        print("===================================")
+        print(response.choices[0].message.tool_calls)
+        print("===================================")
+
         messages.append(response.choices[0].message.model_dump())
         function_results = []
         # 最大迭代次数
@@ -113,20 +118,30 @@ def get_answer_2(question, tools, api_look: bool = True):
                 if function_name in function_map:
                     print(f"! 执行工具函数: {function_name}，参数: {args}")
                     function_result = function_map[function_name](**args)
+
                     print(f"! 工具函数执行结果: {function_result}")
+
+                    # function_result += "如有需要，请进一步加深加宽进行查询操作！"
 
                     function_results.append(function_result)
                     messages.append(
                         {
                             "role": "tool",
-                            "content": f"{function_result}",
+                            "content": f"{function_result} 如有需要，请进一步加深加宽进行查询操作！",
                             "tool_call_id": tool_call.id,
                      }
                     )
                 else:
                     print(f"未找到对应的工具函数: {function_name}")
                     break
+
+
             response = glm4_create(8, messages, filtered_tools)
+
+
+            # if "进一步" in response.choices[0].message.content or "详细" in response.choices[0].message.content:
+            #     messages.append("请进一步加深加宽进行查询操作！")
+
         messages.append(response.choices[0].message.model_dump())
         messages.append({"role": "user", "content": "请根据上述回答过程，简洁地回答问题。"})
         response = glm4_create(8, messages, filtered_tools)
@@ -189,6 +204,9 @@ def select_api_based_on_question(question, tools):
         if tool.get("function", {}).get("name") in api_list_filter
     ]
     # 返回结果
+
+
+
     if "content_p_1" in locals():
         return content_p_1, filtered_tools
     else:
@@ -204,11 +222,12 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     enhanced_prompt = enhanced_prompt.replace("发生了什么", "什么设备在进行什么动作，动作直接引用不要修改,如【A架摆回】")
     enhanced_prompt = enhanced_prompt.replace("什么设备进行了什么关键动作", "什么设备进行了什么关键动作（列举所有进行了某个动作的设备）")
     enhanced_prompt = enhanced_prompt.replace("运行的平均时间", "运行的平均时间（每天运行时长的平均值）")
+
     if "作业" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt+"若问题没有特殊说明，则深海作业A的开始以ON_DP为标志。"
     if "A架" in enhanced_prompt and "开启" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（A架的开启时间以A架开机这个动作发生的时间为准，其他动作发生的时间不算。）"
-    if "A架开机" in enhanced_prompt:
+    if "A架" in enhanced_prompt and "开机" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（A架开机就是“A架”这个设备发生“开机”这个动作。）"
     # if "A架的角度数据出现了异常" in enhanced_prompt:
     #     enhanced_prompt = enhanced_prompt + "（A架的角度数据出现了异常，指的是A架的左/右角度数据出现了异常。应先查询A架开机到关机的时间段，再检查各个时间段内的数据是否有异常。）"
@@ -218,6 +237,7 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
 
 def run_conversation_xietong(question):
     question = enhanced(question)
+    # question += " 如果找不到请回复查阅表格"
     content_p_1, filtered_tool = select_api_based_on_question(
         question, tools.tools_all
     ) 
@@ -241,7 +261,10 @@ def get_answer(question):
 if __name__ == "__main__":
     with open("../../assets/question.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
-        question = question_list[41]["question"]
+        question = question_list[78]["question"]
+
+        # question = {"role": "user", "content": "帮我查询从2024年1月20日，从北京出发前往上海的航班"}
+
         aa = get_answer(question)
         print("*******************最终答案***********************")
         print(aa)
