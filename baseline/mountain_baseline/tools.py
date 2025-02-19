@@ -69,19 +69,19 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_deck_machinery_energy",
-            "description": "计算甲板机械设备在指定时间范围内的总能耗。返回值为总能耗（kWh，float 类型）。",
+            "description": "计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。返回值为包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "start_time": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "查询的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
+                        "description": "指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
                     },
                     "end_time": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "查询的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
+                        "description": "指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
                     },
                 },
                 "required": ["start_time", "end_time"],
@@ -166,7 +166,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "compute_operational_duration",
-            "description": "计算指定时间段内设备的运行时长，并返回三种格式的运行时长。设备名称支持 'A架'。",
+            "description": "计算设备在指定时间段内的实际运行时长（有电流且不为0）。返回值为包含三种格式的实际运行时长的元组。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -195,25 +195,19 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_energy_consumption",
-            "description": "计算指定时间范围内两个推进变频器或推进系统的总能耗，返回值为总能耗（kWh，float 类型），如果数据为空则返回 None。",
+            "description": "计算指定时间范围内推进系统的能耗，包括一号推进变频器、二号推进变频器、艏推、可伸缩推和总能耗。返回值为包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "start_time": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "查询的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
+                        "description": "指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 00:00:00'。",
                     },
                     "end_time": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "查询的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
-                    },
-                    "query_type": {
-                        "type": "string",
-                        "enum": ["1","2","all"],
-                        "description": "查询类型，可选值为 '1'（一号推进）、'2'（二号推进）、'all'（整个推进系统）",
-                        "default": "all",
+                        "description": "指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'，例如 '2024-08-23 12:00:00'。",
                     },
                 },
                 "required": ["start_time", "end_time"],
@@ -224,7 +218,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_generator_energy_consumption",
-            "description": "计算指定时间范围内四个发电机的能耗。返回值为包含四个发电机的总能耗（kWh）的元组，如果数据为空则返回 None。",
+            "description": "计算指定时间范围内四个发电机的能耗与总能耗。返回值为包含四个发电机的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -263,6 +257,87 @@ tools_all = [
                     },
                 },
                 "required": ["start_time", "end_time"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_fuel_consumption",
+            "description": "计算给定时间范围内四个发动机组的燃油消耗量，以及总和。返回值为包含四个发动机组的燃油消耗量和总燃油消耗量（L）的元组，如果数据为空则返回 None。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算燃油消耗的时间段的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算燃油消耗的时间段的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                },
+                "required": ["start_time", "end_time"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_percent",
+            "description": "计算a占b的百分比。返回值为a占b的百分比，若b为0则返回0。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "float",
+                        "description": "被除数",
+                    },
+                    "b": {
+                        "type": "float",
+                        "description": "除数",
+                    },
+                },
+                "required": ["a", "b"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_theoretical_energy_output",
+            "description": "计算理论发电量。返回值为理论发电量（kWh）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "consumption": {
+                        "type": "float",
+                        "description": "燃油消耗量（L）",
+                    },
+                    "density": {
+                        "type": "float",
+                        "description": "燃油密度（kg/L）。",
+                    },
+                    "heating_value": {
+                        "type": "float",
+                        "description": "燃油热值（MJ/kg）。",
+                    },
+                },
+                "required": ["consumption", "density", "heating_value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_field_dict",
+            "description": "获取字段字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
             },
         },
     },

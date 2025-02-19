@@ -1,4 +1,5 @@
 import pandas as pd
+from field_dict import field_dict
 
 def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
     """
@@ -76,6 +77,18 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
 
 
 def compute_operational_duration(start_time, end_time, device_name="A架"):
+    """
+    计算设备在指定时间段内的实际运行时长（有电流且不为0）。
+    Params:
+        start_time (str or pd.Timestamp): 开始时间，字符串格式或 pandas 的 Timestamp 对象。
+        end_time (str or pd.Timestamp): 结束时间，字符串格式或 pandas 的 Timestamp 对象。
+        device_name (str, optional): 设备名称，默认为 "A架"。
+    Returns:
+        tuple: 包含三种格式的实际运行时长的元组。
+    Raises:
+        ValueError: 当设备名称无效时抛出异常。
+    """
+    
     # 设备配置映射：设备名称 -> (文件路径, 开机状态, 关机状态)
     print("-------compute_operational_duration执行-------")
     device_config = {
@@ -123,15 +136,7 @@ def compute_operational_duration(start_time, end_time, device_name="A架"):
     hours_str = f"{hours:02d}"  # 使用格式化字符串确保两位数
     minutes_str = f"{remaining_minutes:02d}"  # 使用格式化字符串确保两位数
 
-    result = {
-        "function": "calculate_uptime",  # 说明这个返回结果来自哪个函数
-        "result": (
-            # f'运行时长：{seconds}秒',
-            f"运行时长：{minutes}分钟",
-            # f'运行时长：{hours_str}小时{minutes_str}分钟'
-        ),
-    }
-    return result
+    return f'运行时长：{seconds}秒', f"运行时长：{minutes}分钟", f'运行时长：{hours_str}小时{minutes_str}分钟'
 
 
 def get_table_data(table_name, start_time, end_time, columns=None, status=None):
@@ -306,25 +311,92 @@ def calculate_total_energy(start_time, end_time, device_name="折臂吊车"):
 
 def calculate_total_deck_machinery_energy(start_time, end_time):
     """
-    计算所有设备（折臂吊车、一号门架、二号门架、绞车）在指定时间范围内的总能耗
-    :param start_time: 查询的开始时间（字符串或 datetime 类型）
-    :param end_time: 查询的结束时间（字符串或 datetime 类型）
-    :return: 所有设备的总能耗（kWh，float 类型）
+    计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。
+    Params:
+        start_time (str): 指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        end_time (str): 指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+    Returns:
+        tuple: 包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
+    Raises:
+        FileNotFoundError: 如果文件未找到。
+        ValueError: 如果时间列转换失败。
     """
-    # 定义设备列表
-    devices = ["折臂吊车", "一号门架", "二号门架", "绞车"]
+    file_path_zhebidiaoche = "database_in_use/device_13_11_meter_1311.csv"
+    power_column_zhebidiaoche = "13-11-6_v"  # 折臂吊车液压-Pt有功功率,单位:kW
 
-    total_energy = 0  # 初始化总能耗
+    file_path_mengjia1 = "database_in_use/device_1_5_meter_105.csv"
+    power_column_mengjia1 = "1-5-6_v"  # 一号门架主液压泵-Pt有功功率,单位:kW
+    
+    file_path_mengjia2 = "database_in_use/device_13_14_meter_1314.csv"
+    power_column_mengjia2 = "13-14-6_v"  # 二号门架主液压泵-Pt有功功率,单位:kW
 
-    # 遍历每个设备，计算能耗并累加
-    for device in devices:
-        try:
-            energy = calculate_total_energy(start_time, end_time, device_name=device)
-            if energy is not None:
-                total_energy += energy
-        except Exception as e:
-            print(f"计算设备 {device} 能耗时出错: {e}")
-    return round(total_energy, 2)  # 返回总能耗，保留两位小数
+    file_path_jiaoche = "database_in_use/device_1_15_meter_115.csv"
+    power_column_jiaoche = "1-15-6_v"  # 绞车变频器-Pt有功功率,单位:kW
+
+    try:
+        df_zhebidiaoche = pd.read_csv(file_path_zhebidiaoche)
+        df_mengjia1 = pd.read_csv(file_path_mengjia1)
+        df_mengjia2 = pd.read_csv(file_path_mengjia2)
+        df_jiaoche = pd.read_csv(file_path_jiaoche)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"文件未找到: {e}")
+    
+    try:
+        df_zhebidiaoche["csvTime"] = pd.to_datetime(df_zhebidiaoche["csvTime"])
+        df_mengjia1["csvTime"] = pd.to_datetime(df_mengjia1["csvTime"])
+        df_mengjia2["csvTime"] = pd.to_datetime(df_mengjia2["csvTime"])
+        df_jiaoche["csvTime"] = pd.to_datetime(df_jiaoche["csvTime"])
+    except Exception as e:
+        raise ValueError(f"时间列转换失败: {e}")
+    
+    filtered_data_zhebidiaoche = df_zhebidiaoche[
+        (df_zhebidiaoche["csvTime"] >= start_time) & (df_zhebidiaoche["csvTime"] < end_time)
+    ].copy()
+    filtered_data_mengjia1 = df_mengjia1[
+        (df_mengjia1["csvTime"] >= start_time) & (df_mengjia1["csvTime"] < end_time)
+    ].copy()
+    filtered_data_mengjia2 = df_mengjia2[
+        (df_mengjia2["csvTime"] >= start_time) & (df_mengjia2["csvTime"] < end_time)
+    ].copy()
+    filtered_data_jiaoche = df_jiaoche[
+        (df_jiaoche["csvTime"] >= start_time) & (df_jiaoche["csvTime"] < end_time)
+    ].copy()
+
+    if filtered_data_zhebidiaoche.empty or filtered_data_mengjia1.empty or filtered_data_mengjia2.empty or filtered_data_jiaoche.empty:
+        return None
+    
+    filtered_data_zhebidiaoche.loc[:, "diff_seconds"] = (
+        filtered_data_zhebidiaoche["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_mengjia1.loc[:, "diff_seconds"] = (
+        filtered_data_mengjia1["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_mengjia2.loc[:, "diff_seconds"] = (
+        filtered_data_mengjia2["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_jiaoche.loc[:, "diff_seconds"] = (
+        filtered_data_jiaoche["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+
+    filtered_data_zhebidiaoche.loc[:, "energy_kWh"] = (
+        filtered_data_zhebidiaoche["diff_seconds"] * filtered_data_zhebidiaoche[power_column_zhebidiaoche] / 3600
+    )
+    filtered_data_mengjia1.loc[:, "energy_kWh"] = (
+        filtered_data_mengjia1["diff_seconds"] * filtered_data_mengjia1[power_column_mengjia1] / 3600
+    )
+    filtered_data_mengjia2.loc[:, "energy_kWh"] = (
+        filtered_data_mengjia2["diff_seconds"] * filtered_data_mengjia2[power_column_mengjia2] / 3600
+    )
+    filtered_data_jiaoche.loc[:, "energy_kWh"] = (
+        filtered_data_jiaoche["diff_seconds"] * filtered_data_jiaoche[power_column_jiaoche] / 3600
+    )
+
+    total_energy_zhebidiaoche = filtered_data_zhebidiaoche["energy_kWh"].sum()
+    total_energy_mengjia1 = filtered_data_mengjia1["energy_kWh"].sum()
+    total_energy_mengjia2 = filtered_data_mengjia2["energy_kWh"].sum()
+    total_energy_jiaoche = filtered_data_jiaoche["energy_kWh"].sum()
+
+    return total_energy_zhebidiaoche, total_energy_mengjia1, total_energy_mengjia2, total_energy_jiaoche, round(total_energy_zhebidiaoche + total_energy_mengjia1 + total_energy_mengjia2 + total_energy_jiaoche, 2)
 
 
 def calculate_energy_consumption(start_time, end_time):
@@ -408,24 +480,37 @@ def query_device_parameter(parameter_name_cn):
     return parameter_dict
 
 
-def calculate_total_energy_consumption(start_time, end_time, query_type="all"):
+def calculate_total_energy_consumption(start_time, end_time):
     """
-    计算指定时间范围内两个推进变频器或推进系统的总能耗
-    :param start_time: 开始时间（字符串或 datetime 类型）
-    :param end_time: 结束时间（字符串或 datetime 类型）
-    :param query_type: 查询类型，可选值为 '1'（一号推进）、'2'（二号推进）、'all'（整个推进系统）
-    :return: 总能耗（kWh，float 类型），如果数据为空则返回 None
+    计算指定时间范围内推进系统的能耗，包括一号推进变频器、二号推进变频器、艏推、可伸缩推和总能耗。
+    Params:
+        start_time (str): 指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        end_time (str): 指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+    Returns:
+        tuple: 包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
+    Raises:
+        FileNotFoundError: 如果文件未找到。
+        ValueError: 如果时间列转换失败。
     """
     # 文件路径和功率列名
     file_path_1 = "database_in_use/Port3_ksbg_8.csv"
     power_column_1 = "P3_15"  # 一号推进变频器功率反馈,单位:kW
 
     file_path_2 = "database_in_use/Port4_ksbg_7.csv"
-    power_column_2 = "P4_15"  # 二号推进变频器功率反馈,单位:kW
+    power_column_2 = "P4_16"  # 二号推进变频器功率反馈,单位:kW
+
+    file_path_shoutui = "database_in_use/Port3_ksbg_9.csv"
+    power_column_shoutui = "P3_18"  # 艏推功率反馈,单位:kW
+
+    file_path_shensuotui = "database_in_use/Port4_ksbg_8.csv"
+    power_column_shensuotui = "P4_21"  # 可伸缩推功率反馈,单位:kW
+
     try:
         # 加载 CSV 文件
         df1 = pd.read_csv(file_path_1)
         df2 = pd.read_csv(file_path_2)
+        df_shoutui = pd.read_csv(file_path_shoutui)
+        df_shensuotui = pd.read_csv(file_path_shensuotui)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"文件未找到: {e}")
 
@@ -433,49 +518,39 @@ def calculate_total_energy_consumption(start_time, end_time, query_type="all"):
     try:
         df1["csvTime"] = pd.to_datetime(df1["csvTime"])
         df2["csvTime"] = pd.to_datetime(df2["csvTime"])
+        df_shoutui["csvTime"] = pd.to_datetime(df_shoutui["csvTime"])
+        df_shensuotui["csvTime"] = pd.to_datetime(df_shensuotui["csvTime"])
     except Exception as e:
         raise ValueError(f"时间列转换失败: {e}")
 
     # 筛选特定时间范围内的数据
-    filtered_data_1 = df1[
-        (df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)
-        ].copy()
-    filtered_data_2 = df2[
-        (df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)
-        ].copy()
+    filtered_data_1 = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
+    filtered_data_2 = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
+    filtered_data_shoutui = df_shoutui[(df_shoutui["csvTime"] >= start_time) & (df_shoutui["csvTime"] < end_time)].copy()
+    filtered_data_shensuotui = df_shensuotui[(df_shensuotui["csvTime"] >= start_time) & (df_shensuotui["csvTime"] < end_time)].copy()
 
-    if filtered_data_1.empty or filtered_data_2.empty:
+    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_shoutui.empty or filtered_data_shensuotui.empty:
         return None
 
     # 计算时间差（秒）
-    filtered_data_1.loc[:, "diff_seconds"] = (
-        filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1)
-    )
-    filtered_data_2.loc[:, "diff_seconds"] = (
-        filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1)
-    )
+    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_shoutui.loc[:, "diff_seconds"] = (filtered_data_shoutui["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_shensuotui.loc[:, "diff_seconds"] = (filtered_data_shensuotui["csvTime"].diff().dt.total_seconds().shift(-1))
 
     # 计算每个时间间隔的能耗（kWh）
-    filtered_data_1.loc[:, "energy_kWh"] = (
-            filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600
-    )
-    filtered_data_2.loc[:, "energy_kWh"] = (
-            filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600
-    )
+    filtered_data_1.loc[:, "energy_kWh"] = (filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600)
+    filtered_data_2.loc[:, "energy_kWh"] = (filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600)
+    filtered_data_shoutui.loc[:, "energy_kWh"] = (filtered_data_shoutui["diff_seconds"] * filtered_data_shoutui[power_column_shoutui] / 3600)
+    filtered_data_shensuotui.loc[:, "energy_kWh"] = (filtered_data_shensuotui["diff_seconds"] * filtered_data_shensuotui[power_column_shensuotui] / 3600)
 
     # 计算总能耗
     total_energy_1 = filtered_data_1["energy_kWh"].sum()
     total_energy_2 = filtered_data_2["energy_kWh"].sum()
+    total_energy_shoutui = filtered_data_shoutui["energy_kWh"].sum()
+    total_energy_shensuotui = filtered_data_shensuotui["energy_kWh"].sum()
 
-    # 根据查询类型返回相应的能耗
-    if query_type == "1":
-        return round(total_energy_1, 2)
-    elif query_type == "2":
-        return round(total_energy_2, 2)
-    elif query_type == "all":
-        return round(total_energy_1 + total_energy_2, 2)
-    else:
-        raise ValueError("query_type 参数无效，请输入 '1'、'2' 或 'all'")
+    return total_energy_1, total_energy_2, total_energy_shoutui, total_energy_shensuotui, round(total_energy_1 + total_energy_2 + total_energy_shoutui + total_energy_shensuotui, 2)
 
 
 def get_device_status_by_time_range(start_time, end_time, device_name):
@@ -545,9 +620,7 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
         ].copy()  # 显式创建副本以避免警告
 
         # 使用 .loc 避免 SettingWithCopyWarning
-        status_changes.loc[:, "csvTime"] = status_changes["csvTime"].dt.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        status_changes.loc[:, "csvTime"] = status_changes["csvTime"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # 将结果转换为字典
         return {
@@ -556,7 +629,6 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
         }
 
     # 获取三个设备的状态变化
-    results = []
     if device_name == "A架":
         results = get_status_changes("Ajia_plc_1", "A架")
     if device_name == "折臂吊车":
@@ -564,25 +636,26 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
     if device_name == "定位设备":
         results = get_status_changes("Port3_ksbg_9", "定位设备")
 
-    # 过滤掉包含错误的结果
-    results = [
-        result for result in results if "error" not in result
-    ]
+    # # 过滤掉包含错误的结果
+    # results = [
+    #     result for result in results if "error" not in result
+    # ]
 
-    # 返回结果和元数据
-    return {
-        "result": results,
-        "metadata": {"start_time": start_time, "end_time": end_time},
-    }
+    # # 返回结果和元数据
+    # return {
+    #     "result": results,
+    #     "metadata": {"start_time": start_time, "end_time": end_time},
+    # }
+    return results
 
 def calculate_generator_energy_consumption(start_time, end_time):
     """
-    计算指定时间范围内四个发电机的能耗。
+    计算指定时间范围内四个发电机的能耗与总能耗。
     Parameters:
         start_time (datetime): 要计算能耗的时间段的开始时间。
         end_time (datetime): 要计算能耗的时间段的结束时间。
     Returns:
-        tuple: 包含四个发电机的总能耗（kWh）的元组，如果数据为空则返回 None。
+        tuple: 包含四个发电机的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
     """
     file_path_1 = "database_in_use/Port1_ksbg_3.csv"
     power_column_1 = "P1_66"  # 一号发电机功率,单位:kW
@@ -649,7 +722,7 @@ def calculate_generator_energy_consumption(start_time, end_time):
     total_energy_3 = filtered_data_3["energy_kWh"].sum()
     total_energy_4 = filtered_data_4["energy_kWh"].sum()
 
-    return total_energy_1, total_energy_2, total_energy_3, total_energy_4
+    return total_energy_1, total_energy_2, total_energy_3, total_energy_4, round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2)
 
 def check_ajia_angle(start_time, end_time):
     """
@@ -699,7 +772,7 @@ def check_ajia_angle(start_time, end_time):
                 error_time.append((error_start_time, error_end_time))
                 error_status = False
                 continue
-        if abs(float(row["Ajia-0_v"]) - float(row["Ajia-1_v"])) > 10:
+        if abs(float(row["Ajia-0_v"]) - float(row["Ajia-1_v"])) > 5:
             if not error_status:
                 error_status = True
                 error_start_time = row["csvTime"]
@@ -712,70 +785,130 @@ def check_ajia_angle(start_time, end_time):
                 error_status = False
     print("A架角度异常数据时间段：", error_time)
     return error_time
-        
 
-
-
-if __name__ == "__main__":
-    # 调用函数，查询指定时间段内的开机时长
+def calculate_fuel_consumption(start_time, end_time):
     """
-    start_time = '2024/8/23 0:00'
-    end_time = '2024/8/23 12:00'
-    uptime = calculate_uptime(start_time, end_time, shebeiname='折臂吊车')
-    # 输出结果
-    print(f"指定时间段内的开机时长: {uptime} 秒")
-    uptime = compute_operational_duration(start_time, end_time, device_name='A架')
-    # 输出结果
-    print(f"指定时间段内的运行时长: {uptime} 秒")
+    计算给定时间范围内四个发动机组的燃油消耗量，以及总和。
+    Args:
+        start_time (datetime): 要计算燃油消耗的时间段的开始时间。
+        end_time (datetime): 要计算燃油消耗的时间段的结束时间。
+    Returns:
+        tuple: 包含四个发动机组的燃油消耗量和总燃油消耗量（L）的元组，如果数据为空则返回 None。
+    Raises:
+        FileNotFoundError: 如果 CSV 文件未找到。
+        ValueError: 如果时间列转换失败。
     """
-    # 示例调用
-    # 示例调用
-    table_name = "Ajia_plc_1"
-    start_time = "2024-08-19 00:00:00"  # 开始时间
-    end_time = "2024-08-19 23:59:59"  # 结束时间
-    columns = ["csvTime", "status"]  # 需要查询的列名
-    status = "开机"  # 筛选状态为 "开机"
+    file_path_1 = "database_in_use/Port1_ksbg_1.csv"
+    fuel_column_1 = "P1_3"  # 一号发动机燃油消耗,单位:L/h
 
-    # 获取数据
-    data = get_table_data(table_name, start_time, end_time, columns, status)
-    # print(data)
-    start_time = "2024-08-23 00:00:00"  # 开始时间
-    end_time = "2024-08-23 11:59:59"
-    device_name = "折臂吊车"
+    file_path_2 = "database_in_use/Port1_ksbg_1.csv"
+    fuel_column_2 = "P1_25"  # 二号发动机燃油消耗,单位:L/h
 
-    # Correctly constructing the tuple
+    file_path_3 = "database_in_use/Port2_ksbg_1.csv"
+    fuel_column_3 = "P2_3"  # 三号发动机燃油消耗,单位:L/h
 
-    # data = compute_operational_duration(start_time, end_time, device_name)
+    file_path_4 = "database_in_use/Port2_ksbg_1.csv"
+    fuel_column_4 = "P2_25"  # 四号发动机燃油消耗,单位:L/h
 
-    print(data)
-    data = calculate_uptime(start_time, end_time, device_name)
+    try:
+        # 加载 CSV 文件
+        df1 = pd.read_csv(file_path_1)
+        df2 = pd.read_csv(file_path_2)
+        df3 = pd.read_csv(file_path_3)
+        df4 = pd.read_csv(file_path_4)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"文件未找到: {e}")
+    
+    # 确保时间列是 datetime 类型
+    try:
+        df1["csvTime"] = pd.to_datetime(df1["csvTime"])
+        df2["csvTime"] = pd.to_datetime(df2["csvTime"])
+        df3["csvTime"] = pd.to_datetime(df3["csvTime"])
+        df4["csvTime"] = pd.to_datetime(df4["csvTime"])
+    except Exception as e:
+        raise ValueError(f"时间列转换失败: {e}")
+    
+    # 筛选特定时间范围内的数据
+    filtered_data_1: pd.DataFrame = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
+    filtered_data_2: pd.DataFrame = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
+    filtered_data_3: pd.DataFrame = df3[(df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)].copy()
+    filtered_data_4: pd.DataFrame = df4[(df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)].copy()
 
-    print(data)
+    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_3.empty or filtered_data_4.empty:
+        return None
+    
+    # 计算时间差（秒）
+    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_3.loc[:, "diff_seconds"] = (filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_4.loc[:, "diff_seconds"] = (filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1))
 
-    start_time = "2024-08-24 00:00:00"  # 开始时间
-    end_time = "2024-08-24 11:59:59"
-    device_name = "折臂吊车"
+    # 计算每个时间间隔的燃油消耗（L）
+    filtered_data_1.loc[:, "fuel_L"] = (
+            filtered_data_1["diff_seconds"] * filtered_data_1[fuel_column_1] / 3600
+    )
+    filtered_data_2.loc[:, "fuel_L"] = (
+            filtered_data_2["diff_seconds"] * filtered_data_2[fuel_column_2] / 3600
+    )
+    filtered_data_3.loc[:, "fuel_L"] = (
+            filtered_data_3["diff_seconds"] * filtered_data_3[fuel_column_3] / 3600
+    )
+    filtered_data_4.loc[:, "fuel_L"] = (
+            filtered_data_4["diff_seconds"] * filtered_data_4[fuel_column_4] / 3600
+    )
 
-    print(calculate_total_energy(start_time, end_time, device_name=device_name))
-    print(calculate_total_deck_machinery_energy(start_time, end_time))
+    # 计算总燃油消耗量
+    total_fuel_1 = filtered_data_1["fuel_L"].sum()
+    total_fuel_2 = filtered_data_2["fuel_L"].sum()
+    total_fuel_3 = filtered_data_3["fuel_L"].sum()
+    total_fuel_4 = filtered_data_4["fuel_L"].sum()
 
-    # 获取数据
-    data = get_table_data(table_name, start_time, end_time, columns, status)
-    # print(data)
-    start_time = "2024-08-23 00:00:00"  # 开始时间
-    end_time = "2024-08-23 11:59:59"
-    device_name = "A架"
+    return total_fuel_1, total_fuel_2, total_fuel_3, total_fuel_4, round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2)
 
-    # Correctly constructing the tuple
+def calculate_percent(a, b):
+    """
+    计算a占b的百分比。
+    Args:
+        a (float): 被除数。
+        b (float): 除数。
+    Returns:
+        float: a占b的百分比，若b为0则返回0。
+    """
+    if b == 0:
+        return 0
+    return round(a / b * 100, 2)
 
-    data = compute_operational_duration(start_time, end_time, device_name)
+def calculate_theoretical_energy_output(consumption, density, heating_value):
+    """
+    计算理论发电量。
+    Args:
+        consumption (float): 燃油消耗量（L）。
+        density (float): 燃油密度（kg/L）。
+        heating_value (float): 燃油热值（MJ/kg）。
+    Returns:
+        float: 理论发电量（kWh）。
+    """
+    # 计算燃油质量（kg）
+    mass = consumption * density
 
-    print(data)
+    # 计算理论发电量（kWh）
+    energy = mass * heating_value / 3.6
 
-    start_time = "2024-08-23 12:00:00"  # 开始时间
-    end_time = "2024-08-23 23:59:59"
-    device_name = "A架"
+    return round(energy, 2)
 
-    data = calculate_uptime(start_time, end_time, device_name)
+def get_field_dict():
+    """
+    获取字段字典。  
 
-    print(data)
+    Returns:
+        dict: 包含字段名和字段中文名的字典。
+    """
+    return field_dict
+
+# def calculate_before_time_percent(actions, status, time):
+#     num = 0
+#     selected = 0
+#     for action in actions:
+#         if action["status"] == status:
+#             num += 1
+#             if action["time"]
