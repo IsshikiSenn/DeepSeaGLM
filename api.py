@@ -1,6 +1,7 @@
 import pandas as pd
 from field_dict import field_dict
 
+
 def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
     """
     计算指定时间段内的开机时长，并返回三种格式的开机时长
@@ -68,9 +69,9 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
     result = {
         "function": "calculate_uptime",  # 说明这个返回结果来自哪个函数
         "result": (
-            f'开机时长：{seconds}秒',
+            f"开机时长：{seconds}秒",
             f"开机时长：{minutes}分钟",
-            f'开机时长：{hours_str}小时{minutes_str}分钟'
+            f"开机时长：{hours_str}小时{minutes_str}分钟",
         ),
     }
     return result
@@ -88,7 +89,7 @@ def compute_operational_duration(start_time, end_time, device_name="A架"):
     Raises:
         ValueError: 当设备名称无效时抛出异常。
     """
-    
+
     # 设备配置映射：设备名称 -> (文件路径, 开机状态, 关机状态)
     print("-------compute_operational_duration执行-------")
     device_config = {
@@ -136,7 +137,11 @@ def compute_operational_duration(start_time, end_time, device_name="A架"):
     hours_str = f"{hours:02d}"  # 使用格式化字符串确保两位数
     minutes_str = f"{remaining_minutes:02d}"  # 使用格式化字符串确保两位数
 
-    return f'运行时长：{seconds}秒', f"运行时长：{minutes}分钟", f'运行时长：{hours_str}小时{minutes_str}分钟'
+    return (
+        f"运行时长：{seconds}秒",
+        f"运行时长：{minutes}分钟",
+        f"运行时长：{hours_str}小时{minutes_str}分钟",
+    )
 
 
 def get_table_data(table_name, start_time, end_time, columns=None, status=None):
@@ -175,9 +180,9 @@ def get_table_data(table_name, start_time, end_time, columns=None, status=None):
     end_time = pd.to_datetime(end_time)
     # 如果开始时间和结束时间是同一分钟
     if (
-            start_time.minute == end_time.minute
-            and start_time.hour == end_time.hour
-            and start_time.day == end_time.day
+        start_time.minute == end_time.minute
+        and start_time.hour == end_time.hour
+        and start_time.day == end_time.day
     ):
         # 将开始时间设置为这一分钟的00秒
         start_time = start_time.replace(second=0)
@@ -254,7 +259,7 @@ def load_and_filter_data(file_path, start_time, end_time, power_column):
     # 筛选特定时间范围内的数据
     filtered_data = df[
         (df["csvTime"] >= start_time) & (df["csvTime"] < end_time)
-        ].copy()
+    ].copy()
 
     if filtered_data.empty:
         return None
@@ -266,7 +271,7 @@ def load_and_filter_data(file_path, start_time, end_time, power_column):
 
     # 计算每个时间间隔的能耗（kWh）
     filtered_data.loc[:, "energy_kWh"] = (
-            filtered_data["diff_seconds"] * filtered_data[power_column] / 3600
+        filtered_data["diff_seconds"] * filtered_data[power_column] / 3600
     )
 
     return filtered_data
@@ -326,7 +331,7 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
 
     file_path_mengjia1 = "database_in_use/device_1_5_meter_105.csv"
     power_column_mengjia1 = "1-5-6_v"  # 一号门架主液压泵-Pt有功功率,单位:kW
-    
+
     file_path_mengjia2 = "database_in_use/device_13_14_meter_1314.csv"
     power_column_mengjia2 = "13-14-6_v"  # 二号门架主液压泵-Pt有功功率,单位:kW
 
@@ -340,7 +345,7 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
         df_jiaoche = pd.read_csv(file_path_jiaoche)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"文件未找到: {e}")
-    
+
     try:
         df_zhebidiaoche["csvTime"] = pd.to_datetime(df_zhebidiaoche["csvTime"])
         df_mengjia1["csvTime"] = pd.to_datetime(df_mengjia1["csvTime"])
@@ -348,9 +353,10 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
         df_jiaoche["csvTime"] = pd.to_datetime(df_jiaoche["csvTime"])
     except Exception as e:
         raise ValueError(f"时间列转换失败: {e}")
-    
+
     filtered_data_zhebidiaoche = df_zhebidiaoche[
-        (df_zhebidiaoche["csvTime"] >= start_time) & (df_zhebidiaoche["csvTime"] < end_time)
+        (df_zhebidiaoche["csvTime"] >= start_time)
+        & (df_zhebidiaoche["csvTime"] < end_time)
     ].copy()
     filtered_data_mengjia1 = df_mengjia1[
         (df_mengjia1["csvTime"] >= start_time) & (df_mengjia1["csvTime"] < end_time)
@@ -362,9 +368,14 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
         (df_jiaoche["csvTime"] >= start_time) & (df_jiaoche["csvTime"] < end_time)
     ].copy()
 
-    if filtered_data_zhebidiaoche.empty or filtered_data_mengjia1.empty or filtered_data_mengjia2.empty or filtered_data_jiaoche.empty:
+    if (
+        filtered_data_zhebidiaoche.empty
+        or filtered_data_mengjia1.empty
+        or filtered_data_mengjia2.empty
+        or filtered_data_jiaoche.empty
+    ):
         return None
-    
+
     filtered_data_zhebidiaoche.loc[:, "diff_seconds"] = (
         filtered_data_zhebidiaoche["csvTime"].diff().dt.total_seconds().shift(-1)
     )
@@ -379,16 +390,24 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
     )
 
     filtered_data_zhebidiaoche.loc[:, "energy_kWh"] = (
-        filtered_data_zhebidiaoche["diff_seconds"] * filtered_data_zhebidiaoche[power_column_zhebidiaoche] / 3600
+        filtered_data_zhebidiaoche["diff_seconds"]
+        * filtered_data_zhebidiaoche[power_column_zhebidiaoche]
+        / 3600
     )
     filtered_data_mengjia1.loc[:, "energy_kWh"] = (
-        filtered_data_mengjia1["diff_seconds"] * filtered_data_mengjia1[power_column_mengjia1] / 3600
+        filtered_data_mengjia1["diff_seconds"]
+        * filtered_data_mengjia1[power_column_mengjia1]
+        / 3600
     )
     filtered_data_mengjia2.loc[:, "energy_kWh"] = (
-        filtered_data_mengjia2["diff_seconds"] * filtered_data_mengjia2[power_column_mengjia2] / 3600
+        filtered_data_mengjia2["diff_seconds"]
+        * filtered_data_mengjia2[power_column_mengjia2]
+        / 3600
     )
     filtered_data_jiaoche.loc[:, "energy_kWh"] = (
-        filtered_data_jiaoche["diff_seconds"] * filtered_data_jiaoche[power_column_jiaoche] / 3600
+        filtered_data_jiaoche["diff_seconds"]
+        * filtered_data_jiaoche[power_column_jiaoche]
+        / 3600
     )
 
     total_energy_zhebidiaoche = filtered_data_zhebidiaoche["energy_kWh"].sum()
@@ -396,7 +415,19 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
     total_energy_mengjia2 = filtered_data_mengjia2["energy_kWh"].sum()
     total_energy_jiaoche = filtered_data_jiaoche["energy_kWh"].sum()
 
-    return total_energy_zhebidiaoche, total_energy_mengjia1, total_energy_mengjia2, total_energy_jiaoche, round(total_energy_zhebidiaoche + total_energy_mengjia1 + total_energy_mengjia2 + total_energy_jiaoche, 2)
+    return (
+        total_energy_zhebidiaoche,
+        total_energy_mengjia1,
+        total_energy_mengjia2,
+        total_energy_jiaoche,
+        round(
+            total_energy_zhebidiaoche
+            + total_energy_mengjia1
+            + total_energy_mengjia2
+            + total_energy_jiaoche,
+            2,
+        ),
+    )
 
 
 def calculate_energy_consumption(start_time, end_time):
@@ -425,7 +456,7 @@ def calculate_energy_consumption(start_time, end_time):
     # 筛选特定时间范围内的数据
     filtered_data = df[
         (df["csvTime"] >= start_time) & (df["csvTime"] < end_time)
-        ].copy()
+    ].copy()
 
     if filtered_data.empty:
         return None
@@ -437,7 +468,7 @@ def calculate_energy_consumption(start_time, end_time):
 
     # 计算每个时间间隔的能耗（kWh）
     filtered_data.loc[:, "energy_kWh"] = (
-            filtered_data["diff_seconds"] * filtered_data[power_column] / 3600
+        filtered_data["diff_seconds"] * filtered_data[power_column] / 3600
     )
 
     # 计算总能耗
@@ -524,25 +555,58 @@ def calculate_total_energy_consumption(start_time, end_time):
         raise ValueError(f"时间列转换失败: {e}")
 
     # 筛选特定时间范围内的数据
-    filtered_data_1 = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
-    filtered_data_2 = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
-    filtered_data_shoutui = df_shoutui[(df_shoutui["csvTime"] >= start_time) & (df_shoutui["csvTime"] < end_time)].copy()
-    filtered_data_shensuotui = df_shensuotui[(df_shensuotui["csvTime"] >= start_time) & (df_shensuotui["csvTime"] < end_time)].copy()
+    filtered_data_1 = df1[
+        (df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)
+    ].copy()
+    filtered_data_2 = df2[
+        (df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)
+    ].copy()
+    filtered_data_shoutui = df_shoutui[
+        (df_shoutui["csvTime"] >= start_time) & (df_shoutui["csvTime"] < end_time)
+    ].copy()
+    filtered_data_shensuotui = df_shensuotui[
+        (df_shensuotui["csvTime"] >= start_time) & (df_shensuotui["csvTime"] < end_time)
+    ].copy()
 
-    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_shoutui.empty or filtered_data_shensuotui.empty:
+    if (
+        filtered_data_1.empty
+        or filtered_data_2.empty
+        or filtered_data_shoutui.empty
+        or filtered_data_shensuotui.empty
+    ):
         return None
 
     # 计算时间差（秒）
-    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_shoutui.loc[:, "diff_seconds"] = (filtered_data_shoutui["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_shensuotui.loc[:, "diff_seconds"] = (filtered_data_shensuotui["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_1.loc[:, "diff_seconds"] = (
+        filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_2.loc[:, "diff_seconds"] = (
+        filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_shoutui.loc[:, "diff_seconds"] = (
+        filtered_data_shoutui["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_shensuotui.loc[:, "diff_seconds"] = (
+        filtered_data_shensuotui["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
 
     # 计算每个时间间隔的能耗（kWh）
-    filtered_data_1.loc[:, "energy_kWh"] = (filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600)
-    filtered_data_2.loc[:, "energy_kWh"] = (filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600)
-    filtered_data_shoutui.loc[:, "energy_kWh"] = (filtered_data_shoutui["diff_seconds"] * filtered_data_shoutui[power_column_shoutui] / 3600)
-    filtered_data_shensuotui.loc[:, "energy_kWh"] = (filtered_data_shensuotui["diff_seconds"] * filtered_data_shensuotui[power_column_shensuotui] / 3600)
+    filtered_data_1.loc[:, "energy_kWh"] = (
+        filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600
+    )
+    filtered_data_2.loc[:, "energy_kWh"] = (
+        filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600
+    )
+    filtered_data_shoutui.loc[:, "energy_kWh"] = (
+        filtered_data_shoutui["diff_seconds"]
+        * filtered_data_shoutui[power_column_shoutui]
+        / 3600
+    )
+    filtered_data_shensuotui.loc[:, "energy_kWh"] = (
+        filtered_data_shensuotui["diff_seconds"]
+        * filtered_data_shensuotui[power_column_shensuotui]
+        / 3600
+    )
 
     # 计算总能耗
     total_energy_1 = filtered_data_1["energy_kWh"].sum()
@@ -550,7 +614,19 @@ def calculate_total_energy_consumption(start_time, end_time):
     total_energy_shoutui = filtered_data_shoutui["energy_kWh"].sum()
     total_energy_shensuotui = filtered_data_shensuotui["energy_kWh"].sum()
 
-    return total_energy_1, total_energy_2, total_energy_shoutui, total_energy_shensuotui, round(total_energy_1 + total_energy_2 + total_energy_shoutui + total_energy_shensuotui, 2)
+    return (
+        total_energy_1,
+        total_energy_2,
+        total_energy_shoutui,
+        total_energy_shensuotui,
+        round(
+            total_energy_1
+            + total_energy_2
+            + total_energy_shoutui
+            + total_energy_shensuotui,
+            2,
+        ),
+    )
 
 
 def get_device_status_by_time_range(start_time, end_time, device_name):
@@ -599,7 +675,7 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
             (df["csvTime"] >= start_time_dt)
             & (df["csvTime"] <= end_time_dt)
             & (df["status"] != "False")
-            ]
+        ]
 
         if filtered_data.empty:
             return {
@@ -620,7 +696,9 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
         ].copy()  # 显式创建副本以避免警告
 
         # 使用 .loc 避免 SettingWithCopyWarning
-        status_changes.loc[:, "csvTime"] = status_changes["csvTime"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        status_changes.loc[:, "csvTime"] = status_changes["csvTime"].dt.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         # 将结果转换为字典
         return {
@@ -647,6 +725,7 @@ def get_device_status_by_time_range(start_time, end_time, device_name):
     #     "metadata": {"start_time": start_time, "end_time": end_time},
     # }
     return results
+
 
 def calculate_generator_energy_consumption(start_time, end_time):
     """
@@ -677,7 +756,7 @@ def calculate_generator_energy_consumption(start_time, end_time):
         df4 = pd.read_csv(file_path_4)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"文件未找到: {e}")
-    
+
     # 确保时间列是 datetime 类型
     try:
         df1["csvTime"] = pd.to_datetime(df1["csvTime"])
@@ -688,32 +767,53 @@ def calculate_generator_energy_consumption(start_time, end_time):
         raise ValueError(f"时间列转换失败: {e}")
 
     # 筛选特定时间范围内的数据
-    filtered_data_1 = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
-    filtered_data_2 = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
-    filtered_data_3 = df3[(df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)].copy()
-    filtered_data_4 = df4[(df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)].copy()
+    filtered_data_1 = df1[
+        (df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)
+    ].copy()
+    filtered_data_2 = df2[
+        (df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)
+    ].copy()
+    filtered_data_3 = df3[
+        (df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)
+    ].copy()
+    filtered_data_4 = df4[
+        (df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)
+    ].copy()
 
-    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_3.empty or filtered_data_4.empty:
+    if (
+        filtered_data_1.empty
+        or filtered_data_2.empty
+        or filtered_data_3.empty
+        or filtered_data_4.empty
+    ):
         return None
 
     # 计算时间差（秒）
-    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_3.loc[:, "diff_seconds"] = (filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_4.loc[:, "diff_seconds"] = (filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_1.loc[:, "diff_seconds"] = (
+        filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_2.loc[:, "diff_seconds"] = (
+        filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_3.loc[:, "diff_seconds"] = (
+        filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_4.loc[:, "diff_seconds"] = (
+        filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
 
     # 计算每个时间间隔的能耗（kWh）
     filtered_data_1.loc[:, "energy_kWh"] = (
-            filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600
+        filtered_data_1["diff_seconds"] * filtered_data_1[power_column_1] / 3600
     )
     filtered_data_2.loc[:, "energy_kWh"] = (
-            filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600
+        filtered_data_2["diff_seconds"] * filtered_data_2[power_column_2] / 3600
     )
     filtered_data_3.loc[:, "energy_kWh"] = (
-            filtered_data_3["diff_seconds"] * filtered_data_3[power_column_3] / 3600
+        filtered_data_3["diff_seconds"] * filtered_data_3[power_column_3] / 3600
     )
     filtered_data_4.loc[:, "energy_kWh"] = (
-            filtered_data_4["diff_seconds"] * filtered_data_4[power_column_4] / 3600
+        filtered_data_4["diff_seconds"] * filtered_data_4[power_column_4] / 3600
     )
 
     # 计算总能耗
@@ -722,7 +822,14 @@ def calculate_generator_energy_consumption(start_time, end_time):
     total_energy_3 = filtered_data_3["energy_kWh"].sum()
     total_energy_4 = filtered_data_4["energy_kWh"].sum()
 
-    return total_energy_1, total_energy_2, total_energy_3, total_energy_4, round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2)
+    return (
+        total_energy_1,
+        total_energy_2,
+        total_energy_3,
+        total_energy_4,
+        round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2),
+    )
+
 
 def check_ajia_angle(start_time, end_time):
     """
@@ -751,7 +858,9 @@ def check_ajia_angle(start_time, end_time):
         raise ValueError(f"时间列转换失败: {e}")
 
     # 筛选特定时间范围内的数据
-    filtered_data: pd.DataFrame = df[(df["csvTime"] >= start_time) & (df["csvTime"] < end_time)].copy()
+    filtered_data: pd.DataFrame = df[
+        (df["csvTime"] >= start_time) & (df["csvTime"] < end_time)
+    ].copy()
 
     # 检查数据是否存在
     if filtered_data.empty:
@@ -763,7 +872,7 @@ def check_ajia_angle(start_time, end_time):
     error_start_time = ""
     error_end_time = ""
     for index, row in filtered_data.iterrows():
-        if row["Ajia-0_v"] == 'error' or row["Ajia-1_v"] == 'error':
+        if row["Ajia-0_v"] == "error" or row["Ajia-1_v"] == "error":
             if not error_status:
                 continue
             else:
@@ -785,6 +894,7 @@ def check_ajia_angle(start_time, end_time):
                 error_status = False
     print("A架角度异常数据时间段：", error_time)
     return error_time
+
 
 def calculate_fuel_consumption(start_time, end_time):
     """
@@ -818,7 +928,7 @@ def calculate_fuel_consumption(start_time, end_time):
         df4 = pd.read_csv(file_path_4)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"文件未找到: {e}")
-    
+
     # 确保时间列是 datetime 类型
     try:
         df1["csvTime"] = pd.to_datetime(df1["csvTime"])
@@ -827,34 +937,55 @@ def calculate_fuel_consumption(start_time, end_time):
         df4["csvTime"] = pd.to_datetime(df4["csvTime"])
     except Exception as e:
         raise ValueError(f"时间列转换失败: {e}")
-    
-    # 筛选特定时间范围内的数据
-    filtered_data_1: pd.DataFrame = df1[(df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)].copy()
-    filtered_data_2: pd.DataFrame = df2[(df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)].copy()
-    filtered_data_3: pd.DataFrame = df3[(df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)].copy()
-    filtered_data_4: pd.DataFrame = df4[(df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)].copy()
 
-    if filtered_data_1.empty or filtered_data_2.empty or filtered_data_3.empty or filtered_data_4.empty:
+    # 筛选特定时间范围内的数据
+    filtered_data_1: pd.DataFrame = df1[
+        (df1["csvTime"] >= start_time) & (df1["csvTime"] < end_time)
+    ].copy()
+    filtered_data_2: pd.DataFrame = df2[
+        (df2["csvTime"] >= start_time) & (df2["csvTime"] < end_time)
+    ].copy()
+    filtered_data_3: pd.DataFrame = df3[
+        (df3["csvTime"] >= start_time) & (df3["csvTime"] < end_time)
+    ].copy()
+    filtered_data_4: pd.DataFrame = df4[
+        (df4["csvTime"] >= start_time) & (df4["csvTime"] < end_time)
+    ].copy()
+
+    if (
+        filtered_data_1.empty
+        or filtered_data_2.empty
+        or filtered_data_3.empty
+        or filtered_data_4.empty
+    ):
         return None
-    
+
     # 计算时间差（秒）
-    filtered_data_1.loc[:, "diff_seconds"] = (filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_2.loc[:, "diff_seconds"] = (filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_3.loc[:, "diff_seconds"] = (filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1))
-    filtered_data_4.loc[:, "diff_seconds"] = (filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1))
+    filtered_data_1.loc[:, "diff_seconds"] = (
+        filtered_data_1["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_2.loc[:, "diff_seconds"] = (
+        filtered_data_2["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_3.loc[:, "diff_seconds"] = (
+        filtered_data_3["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
+    filtered_data_4.loc[:, "diff_seconds"] = (
+        filtered_data_4["csvTime"].diff().dt.total_seconds().shift(-1)
+    )
 
     # 计算每个时间间隔的燃油消耗（L）
     filtered_data_1.loc[:, "fuel_L"] = (
-            filtered_data_1["diff_seconds"] * filtered_data_1[fuel_column_1] / 3600
+        filtered_data_1["diff_seconds"] * filtered_data_1[fuel_column_1] / 3600
     )
     filtered_data_2.loc[:, "fuel_L"] = (
-            filtered_data_2["diff_seconds"] * filtered_data_2[fuel_column_2] / 3600
+        filtered_data_2["diff_seconds"] * filtered_data_2[fuel_column_2] / 3600
     )
     filtered_data_3.loc[:, "fuel_L"] = (
-            filtered_data_3["diff_seconds"] * filtered_data_3[fuel_column_3] / 3600
+        filtered_data_3["diff_seconds"] * filtered_data_3[fuel_column_3] / 3600
     )
     filtered_data_4.loc[:, "fuel_L"] = (
-            filtered_data_4["diff_seconds"] * filtered_data_4[fuel_column_4] / 3600
+        filtered_data_4["diff_seconds"] * filtered_data_4[fuel_column_4] / 3600
     )
 
     # 计算总燃油消耗量
@@ -863,7 +994,14 @@ def calculate_fuel_consumption(start_time, end_time):
     total_fuel_3 = filtered_data_3["fuel_L"].sum()
     total_fuel_4 = filtered_data_4["fuel_L"].sum()
 
-    return total_fuel_1, total_fuel_2, total_fuel_3, total_fuel_4, round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2)
+    return (
+        total_fuel_1,
+        total_fuel_2,
+        total_fuel_3,
+        total_fuel_4,
+        round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2),
+    )
+
 
 def calculate_percent(a, b):
     """
@@ -877,6 +1015,7 @@ def calculate_percent(a, b):
     if b == 0:
         return 0
     return round(a / b * 100, 2)
+
 
 def calculate_theoretical_energy_output(consumption, density, heating_value):
     """
@@ -896,14 +1035,16 @@ def calculate_theoretical_energy_output(consumption, density, heating_value):
 
     return round(energy, 2)
 
+
 def get_field_dict():
     """
-    获取字段字典。  
+    获取字段字典。
 
     Returns:
         dict: 包含字段名和字段中文名的字典。
     """
     return field_dict
+
 
 # def calculate_before_time_percent(actions, status, time):
 #     num = 0
