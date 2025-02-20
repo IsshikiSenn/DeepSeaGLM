@@ -154,7 +154,7 @@ def select_api_based_on_question(question, tools):
         if "发电机" in question:
             print("! 问题包含：发电机，提供Api：calculate_generator_energy_consumption")
             api_list_filter.append("calculate_generator_energy_consumption")        
-    if "动作" in question or "DP" in question or "摆" in question or "开机" in question or "小艇" in question or "征服者" in question:
+    if "动作" in question or "DP" in question or "摆" in question or "开机" in question or "小艇" in question or "征服者" in question or "关机" in question:
         print("! 问题包含：动作，提供Api：get_device_status_by_time_range")
         api_list_filter.append("get_device_status_by_time_range")
         question = question + "动作直接引用不要修改,如【A架摆回】"
@@ -164,8 +164,8 @@ def select_api_based_on_question(question, tools):
     if "运行时长" in question and "实际运行时长" not in question:
         print("! 问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
-    if "A架的角度数据" in question:
-        print("! 问题包含：A架的角度数据，提供Api：check_ajia_angle")
+    if "A架" in question and "异常" in question:
+        print("! 问题包含：A架、异常，提供Api：check_ajia_angle")
         api_list_filter.append("check_ajia_angle")
     if "燃油消耗量" in question:
         print("! 问题包含：燃油消耗量，提供Api：calculate_fuel_consumption")
@@ -268,7 +268,7 @@ def get_answer(question):
         return "An error occurred while retrieving the answer."
 
 if __name__ == "__main__":
-    num = 72 # 问题编号
+    num = 100 # 问题编号
     with open("result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[num - 1]["question"]

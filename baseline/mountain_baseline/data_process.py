@@ -830,6 +830,7 @@ def create_annotations():
     for item in descriptions:
         if item['数据表名'] == 'Ajia_plc_1':
             item['字段含义'][-2] = 'A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回'
+        item['字段含义'][-1] = '标记是否有电流'
         if item['数据表名'] == 'device_13_11_meter_1311':
             item['字段含义'][-1] = '折臂吊车及小艇动作,包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座'
         if item['数据表名'] == 'Port3_ksbg_9':
@@ -899,7 +900,8 @@ result = process_folder(folder_path)
 result = [item for item in result if item['数据表名'] != '设备参数详情表']
 for item in result:
     if item['数据表名'] == 'Ajia_plc_1':
-        item['字段含义'][-1] = 'A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回'
+        item['字段含义'][-2] = 'A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回'
+        item['字段含义'][-1] = '标记是否有电流'
     if item['数据表名'] == 'device_13_11_meter_1311':
         item['字段含义'][-1] = '折臂吊车及小艇动作,包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座'
     if item['数据表名'] == 'Port3_ksbg_9':
