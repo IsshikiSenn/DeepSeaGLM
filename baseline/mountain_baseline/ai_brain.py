@@ -96,9 +96,7 @@ def get_answer_2(question, tools, api_look: bool = True):
         # 第一次调用模型
         response = glm4_create(6, messages, filtered_tools)
 
-        print("===================================")
         print(response.choices[0].message.tool_calls)
-        print("===================================")
 
         messages.append(response.choices[0].message.model_dump())
         function_results = []
@@ -175,7 +173,7 @@ def select_api_based_on_question(question, tools):
     if "运行时长" in question and "实际运行时长" not in question:
         print("! 问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
-    if "A架的角度数据" in question:
+    if "A架的角度数据" or ("A架" and "角度") in question:
         print("! 问题包含：A架的角度数据，提供Api：check_ajia_angle")
         api_list_filter.append("check_ajia_angle")
 
@@ -229,8 +227,8 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = enhanced_prompt + "（A架的开启时间以A架开机这个动作发生的时间为准，其他动作发生的时间不算。）"
     if "A架" in enhanced_prompt and "开机" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（A架开机就是“A架”这个设备发生“开机”这个动作。）"
-    # if "A架的角度数据出现了异常" in enhanced_prompt:
-    #     enhanced_prompt = enhanced_prompt + "（A架的角度数据出现了异常，指的是A架的左/右角度数据出现了异常。应先查询A架开机到关机的时间段，再检查各个时间段内的数据是否有异常。）"
+    if "A架的角度数据出现了异常" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（A架的角度数据出现了异常，指的是A架的左/右角度数据出现了异常。应先查询A架开机到关机的时间段，再检查各个时间段内的数据是否有异常。）"
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -261,7 +259,7 @@ def get_answer(question):
 if __name__ == "__main__":
     with open("../../assets/question.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
-        question = question_list[78]["question"]
+        question = question_list[60]["question"]
 
         # question = {"role": "user", "content": "帮我查询从2024年1月20日，从北京出发前往上海的航班"}
 
