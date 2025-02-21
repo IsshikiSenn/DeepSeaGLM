@@ -86,6 +86,8 @@ function_map = {
     "calculate_percent": api.calculate_percent,
     "calculate_theoretical_energy_output": api.calculate_theoretical_energy_output,
     "get_field_dict": api.get_field_dict,
+    "sum_list": api.sum_list,
+    "get_work_time": api.get_work_time,
 }
 
 
@@ -148,12 +150,12 @@ def get_answer_2(question, tools, api_look: bool = True):
 
 
 def select_api_based_on_question(question, tools):
-    api_list_filter = ["calculate_percent", "query_device_parameter"]
+    api_list_filter = ["calculate_percent", "query_device_parameter", "sum_list"]
     # 根据问题内容选择相应的 API
     if "能耗" in question:
         print("! 问题包含：能耗，提供Api：calculate_total_energy")
         api_list_filter.append("calculate_total_energy")
-        if "推进系统" in question:
+        if "推进系统" in question or "侧推" in question:
             print("! 问题包含：推进系统，提供Api：calculate_total_energy_consumption")
             api_list_filter.append("calculate_total_energy_consumption")
         if "甲板机械" in question or "折臂吊车" in question:
@@ -179,7 +181,7 @@ def select_api_based_on_question(question, tools):
     if "开机时长" in question:
         print("! 问题包含：开机时长，供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
-    if "运行时长" in question and "实际运行时长" not in question:
+    if ("运行时长" in question or "运行时间" in question) and "实际运行时长" not in question:
         print("! 问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
     if "A架" in question and "异常" in question:
@@ -200,23 +202,26 @@ def select_api_based_on_question(question, tools):
     if "实际运行时长" in question:
         print("! 问题包含：实际运行时长，提供Api：compute_operational_duration")
         api_list_filter.append("compute_operational_duration")
+    if "作业" in question:
+        print("! 问题包含：作业，提供Api：get_work_time")
+        api_list_filter.append("get_work_time")
 
-    # if len(api_list_filter) == 2:
-    # 如果问题不匹配上述条件，则根据表名选择 API
-    table_name_string = choose_table(question)
-    with open("dict.json", "r", encoding="utf-8") as file:
-        table_data = json.load(file)
-        table_name = [
-            item for item in table_data if item["数据表名"] in table_name_string
-        ]
-        if "设备参数详情表" in [item["数据表名"] for item in table_name]:
-            print("! 使用设备参数详情表，提供Api：query_device_parameter")
-            api_list_filter.append("query_device_parameter")
-            content_p_1 = str(table_name) + question  # 补充 content_p_1
-        else:
-            print("! 使用数据表，提供Api：get_table_data")
-            api_list_filter.append("get_table_data")
-            content_p_1 = str(table_name) + question
+    if len(api_list_filter) == 3:
+        # 如果问题不匹配上述条件，则根据表名选择 API
+        table_name_string = choose_table(question)
+        with open("dict.json", "r", encoding="utf-8") as file:
+            table_data = json.load(file)
+            table_name = [
+                item for item in table_data if item["数据表名"] in table_name_string
+            ]
+            if "设备参数详情表" in [item["数据表名"] for item in table_name]:
+                print("! 使用设备参数详情表，提供Api：query_device_parameter")
+                api_list_filter.append("query_device_parameter")
+                content_p_1 = str(table_name) + question  # 补充 content_p_1
+            else:
+                print("! 使用数据表，提供Api：get_table_data")
+                api_list_filter.append("get_table_data")
+                content_p_1 = str(table_name) + question
 
     # 过滤工具列表
     filtered_tools = [
@@ -270,7 +275,7 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         )
     if "作业能耗" in enhanced_prompt:
         enhanced_prompt = (
-            enhanced_prompt + "（作业能耗是指深海作业A中所有甲板机械设备的能耗。）"
+            enhanced_prompt + "（作业能耗是指深海作业A中所有发电机的能耗，应先用get_work_time列出所有作业的时间范围，再用calculate_generator_energy_consumption计算每个作业时间范围的发电机能耗，最后用sum_list计算总和。）"
         )
     if "发电效率" in enhanced_prompt:
         enhanced_prompt = (
@@ -280,6 +285,10 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = enhanced_prompt + "（要计算理论发电量应先计算燃油消耗量。）"
     if "实际运行时长" in enhanced_prompt and "效率" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（效率是指实际运行时长和开机时长的比值。）"
+    if "DP过程" in enhanced_prompt:
+        enhanced_prompt = (enhanced_prompt+ "（DP过程是指从ON_DP到OFF_DP的过程，应先使用get_device_status_by_time_range查询所有ON_DP和OFF_DP的时间，再计算所有DP过程的能耗，最后使用sum_list函数取总和。）")
+    if "小艇入水到小艇落座" in enhanced_prompt:
+        enhanced_prompt = (enhanced_prompt+ "（小艇入水到小艇落座是指小艇入水动作发生到小艇落座动作发生的整个时间范围，使用函数计算这段时间内的能耗时应该传入这个时间范围。）")
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -308,14 +317,14 @@ def get_answer(question):
 
 
 if __name__ == "__main__":
-    question_num = 100  # 问题编号
+    QUESTION = 54   # 问题编号
     with open("result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
-    question = question_list[question_num - 1]["question"]
+    question = question_list[QUESTION - 1]["question"]
     answer = get_answer(question)
     print("*******************最终答案***********************")
     print(answer)
-    question_list[question_num - 1]["answer"] = answer
+    question_list[QUESTION - 1]["answer"] = answer
     with open("result.jsonl", "w", encoding="utf-8") as file:
         for item in question_list:
             file.write(json.dumps(item, ensure_ascii=False) + "\n")

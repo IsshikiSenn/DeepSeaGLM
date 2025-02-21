@@ -69,7 +69,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_deck_machinery_energy",
-            "description": "计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。返回值为包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
+            "description": "计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。返回值为包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -109,7 +109,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "get_device_status_by_time_range",
-            "description": "根据开始时间和结束时间，查询某个设备在进行什么动作。返回正在进行设备动作",
+            "description": "根据开始时间和结束时间，查询某个设备在进行什么动作。返回正在进行的设备动作。A架的动作包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回，折臂吊车的动作包括折臂吊车关机、折臂吊车开机、小艇检查完毕、小艇入水、小艇落座，定位设备的动作包括OFF_DP和ON_DP。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -195,7 +195,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_energy_consumption",
-            "description": "计算指定时间范围内推进系统的能耗，包括一号推进变频器、二号推进变频器、艏推、可伸缩推和总能耗。返回值为包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
+            "description": "计算指定时间范围内推进系统的能耗，包括一号推进变频器、二号推进变频器、艏推（侧推）、可伸缩推和总能耗。返回值为包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -218,7 +218,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_generator_energy_consumption",
-            "description": "计算指定时间范围内四个发电机的能耗与总能耗。返回值为包含四个发电机的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。",
+            "description": "计算指定时间范围内四个发电机的能耗与总能耗。返回值为包含四个发电机的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -264,7 +264,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_fuel_consumption",
-            "description": "计算给定时间范围内四个发动机组的燃油消耗量，以及总和。返回值为包含四个发动机组的燃油消耗量和总燃油消耗量（L）的元组，如果数据为空则返回 None。",
+            "description": "计算给定时间范围内四个发动机组的燃油消耗量，以及总和。返回值为包含四个发动机组的燃油消耗量和总燃油消耗量（L）的字典，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -307,6 +307,23 @@ tools_all = [
     {
         "type": "function",
         "function": {
+            "name": "sum_list",
+            "description": "计算列表元素之和。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ls": {
+                        "type": "list",
+                        "description": "要计算的列表。",
+                    },
+                },
+                "required": ["ls"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "calculate_theoretical_energy_output",
             "description": "计算理论发电量。返回值为理论发电量（kWh）。",
             "parameters": {
@@ -338,6 +355,29 @@ tools_all = [
                 "type": "object",
                 "properties": {},
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_work_time",
+            "description": "计算指定时间范围内的作业时间。返回值为包含作业开始时间和结束时间的字典列表。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询设备状态的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询设备状态的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                },
+                "required": ["start_time", "end_time"],
             },
         },
     },

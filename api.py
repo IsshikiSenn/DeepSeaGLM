@@ -321,7 +321,7 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
         start_time (str): 指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
     Returns:
-        tuple: 包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
+        dict: 包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。
     Raises:
         FileNotFoundError: 如果文件未找到。
         ValueError: 如果时间列转换失败。
@@ -415,19 +415,19 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
     total_energy_mengjia2 = filtered_data_mengjia2["energy_kWh"].sum()
     total_energy_jiaoche = filtered_data_jiaoche["energy_kWh"].sum()
 
-    return (
-        total_energy_zhebidiaoche,
-        total_energy_mengjia1,
-        total_energy_mengjia2,
-        total_energy_jiaoche,
-        round(
+    return {
+        "折臂吊车":total_energy_zhebidiaoche,
+        "一号门架":total_energy_mengjia1,
+        "二号门架":total_energy_mengjia2,
+        "绞车":total_energy_jiaoche,
+        "总能耗":round(
             total_energy_zhebidiaoche
             + total_energy_mengjia1
             + total_energy_mengjia2
             + total_energy_jiaoche,
             2,
         ),
-    )
+    }
 
 
 def calculate_energy_consumption(start_time, end_time):
@@ -518,7 +518,7 @@ def calculate_total_energy_consumption(start_time, end_time):
         start_time (str): 指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
     Returns:
-        tuple: 包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
+        dict: 包含推进系统四个部分（一号推进变频器、二号推进变频器、艏推、可伸缩推）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。
     Raises:
         FileNotFoundError: 如果文件未找到。
         ValueError: 如果时间列转换失败。
@@ -614,19 +614,19 @@ def calculate_total_energy_consumption(start_time, end_time):
     total_energy_shoutui = filtered_data_shoutui["energy_kWh"].sum()
     total_energy_shensuotui = filtered_data_shensuotui["energy_kWh"].sum()
 
-    return (
-        total_energy_1,
-        total_energy_2,
-        total_energy_shoutui,
-        total_energy_shensuotui,
-        round(
+    return {
+        "一号推进变频器":total_energy_1,
+        "二号推进变频器":total_energy_2,
+        "艏推":total_energy_shoutui,
+        "可伸缩推":total_energy_shensuotui,
+        "总能耗":round(
             total_energy_1
             + total_energy_2
             + total_energy_shoutui
             + total_energy_shensuotui,
             2,
         ),
-    )
+    }
 
 
 def get_device_status_by_time_range(start_time, end_time, device_name):
@@ -734,7 +734,7 @@ def calculate_generator_energy_consumption(start_time, end_time):
         start_time (datetime): 要计算能耗的时间段的开始时间。
         end_time (datetime): 要计算能耗的时间段的结束时间。
     Returns:
-        tuple: 包含四个发电机的能耗和总能耗（kWh）的元组，如果数据为空则返回 None。
+        dict: 包含四个发电机的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。
     """
     file_path_1 = "database_in_use/Port1_ksbg_3.csv"
     power_column_1 = "P1_66"  # 一号发电机功率,单位:kW
@@ -822,13 +822,13 @@ def calculate_generator_energy_consumption(start_time, end_time):
     total_energy_3 = filtered_data_3["energy_kWh"].sum()
     total_energy_4 = filtered_data_4["energy_kWh"].sum()
 
-    return (
-        total_energy_1,
-        total_energy_2,
-        total_energy_3,
-        total_energy_4,
-        round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2),
-    )
+    return {
+        "一号发电机":total_energy_1,
+        "二号发电机":total_energy_2,
+        "三号发电机":total_energy_3,
+        "四号发电机":total_energy_4,
+        "总能耗":round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2),
+    }
 
 
 def check_ajia_angle(start_time, end_time):
@@ -903,7 +903,7 @@ def calculate_fuel_consumption(start_time, end_time):
         start_time (datetime): 要计算燃油消耗的时间段的开始时间。
         end_time (datetime): 要计算燃油消耗的时间段的结束时间。
     Returns:
-        tuple: 包含四个发动机组的燃油消耗量和总燃油消耗量（L）的元组，如果数据为空则返回 None。
+        dict: 包含四个发动机组的燃油消耗量和总燃油消耗量（L）的字典，如果数据为空则返回 None。
     Raises:
         FileNotFoundError: 如果 CSV 文件未找到。
         ValueError: 如果时间列转换失败。
@@ -994,13 +994,13 @@ def calculate_fuel_consumption(start_time, end_time):
     total_fuel_3 = filtered_data_3["fuel_L"].sum()
     total_fuel_4 = filtered_data_4["fuel_L"].sum()
 
-    return (
-        total_fuel_1,
-        total_fuel_2,
-        total_fuel_3,
-        total_fuel_4,
-        round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2),
-    )
+    return {
+        "一号发电机":total_fuel_1,
+        "二号发电机":total_fuel_2,
+        "三号发电机":total_fuel_3,
+        "四号发电机":total_fuel_4,
+        "总燃油消耗量":round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2),
+    }
 
 
 def calculate_percent(a, b):
@@ -1045,6 +1045,68 @@ def get_field_dict():
     """
     return field_dict
 
+def sum_list(ls):
+    """
+    计算列表元素之和。
+    Args:
+        ls (list): 要计算的列表。
+    Returns:
+        float: 列表元素之和。
+    """
+    return round(sum(ls), 2)
+
+def get_work_time(start_time, end_time):
+    """
+    计算指定时间范围内的作业时间。
+    Args:
+        start_time (str): 要查询设备状态的时间范围的开始时间。
+        end_time (str): 要查询设备状态的时间范围的结束时间。
+    Returns:
+        list of dict: 包含作业开始时间和结束时间的字典列表。
+    """
+    action_ajia = get_device_status_by_time_range(start_time, end_time, "A架")["正在进行的关键动作"]
+    action_dp = get_device_status_by_time_range(start_time, end_time, "定位设备")["正在进行的关键动作"]
+
+    action_ajia = [action for action in action_ajia if action["status"] == "开机" or action["status"] == "关机"]
+    action_dp = [action for action in action_dp if action["status"] == "ON_DP" or action["status"] == "OFF_DP"]
+
+    time_section = []
+    start = None
+    end = None
+    for action in action_ajia:
+        if action["status"] == "开机":
+            start = action["csvTime"]
+        if action["status"] == "关机":
+            end = action["csvTime"]
+            time_section.append((start, end))
+            start = None
+            end = None
+    for action in action_dp:
+        if action["status"] == "ON_DP":
+            start = action["csvTime"]
+        if action["status"] == "OFF_DP":
+            end = action["csvTime"]
+            time_section.append((start, end))
+            start = None
+            end = None
+
+    time_section.sort(key=lambda x: x[0])
+
+    merged_time_section = []
+    current_start, current_end = time_section[0]
+    for start, end in time_section[1:]:
+        if start <= current_end:  # 如果当前时间片段与下一个时间片段重叠或相邻
+            current_end = max(current_end, end)  # 合并时间片段
+        else:
+            merged_time_section.append({"作业开始": current_start, "作业结束":current_end})  # 保存当前合并后的时间片段
+            current_start, current_end = start, end  # 开始新的时间片段
+
+    # 添加最后一个合并后的时间片段
+    merged_time_section.append({"作业开始": current_start, "作业结束":current_end})
+
+    return merged_time_section
+
+
 
 # def calculate_before_time_percent(actions, status, time):
 #     num = 0
@@ -1053,3 +1115,6 @@ def get_field_dict():
 #         if action["status"] == status:
 #             num += 1
 #             if action["time"]
+
+if __name__ == "__main__":
+    print(get_work_time("2024-08-23 00:00:00", "2024-08-23 23:59:59"))
