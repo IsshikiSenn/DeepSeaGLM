@@ -1132,7 +1132,7 @@ def find_missing_records(table_name: str, start_time, end_time):
     }
 
 
-def count_oscillations(start_time, end_time, name: str, angle_range: tuple):
+def count_oscillations(start_time, end_time, name: str, angle_range_start, angle_range_end):
 
     # 读取 CSV 文件
     df = pd.read_csv("./database_in_use/" + "Ajia_plc_1" + ".csv", parse_dates=['csvTime'])
@@ -1157,7 +1157,7 @@ def count_oscillations(start_time, end_time, name: str, angle_range: tuple):
     in_range = False
 
     for angle in angles:
-        if angle_range[0] <= angle <= angle_range[1]:
+        if angle_range_start <= angle <= angle_range_end:
             if not in_range:
                 oscillation_count += 1
                 in_range = True

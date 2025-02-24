@@ -328,7 +328,7 @@ def get_answer(question):
 
 
 if __name__ == "__main__":
-    QUESTION = 53   # 问题编号
+    QUESTION = 58   # 问题编号
     with open("result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
