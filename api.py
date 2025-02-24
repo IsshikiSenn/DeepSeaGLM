@@ -1107,6 +1107,65 @@ def get_work_time(start_time, end_time):
     return merged_time_section
 
 
+def find_missing_records(table_name: str, start_time, end_time):
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 确保时间格式为 年-月-日 时:分
+    df['csvTime'] = df['csvTime'].dt.strftime('%Y-%m-%d %H:%M')
+
+    # 生成完整的时间范围
+    full_time_range = pd.date_range(start=start_time, end=end_time, freq='T').strftime('%Y-%m-%d %H:%M')
+
+    # 现有数据的时间集合
+    existing_times = set(df['csvTime'])
+
+    # 找到缺失的时间点
+    missing_times = [t for t in full_time_range if t not in existing_times]
+
+    # 返回字典
+    return {
+        "missing_count": len(missing_times)
+    }
+
+
+def count_oscillations(start_time, end_time, name: str, angle_range: tuple):
+
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/" + "Ajia_plc_1" + ".csv", parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 选择正确的角度字段
+    angle_column = "Ajia-1_v" if name == "左舷" else "Ajia-0_v"
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 转换角度列为浮点数
+    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+
+    # 获取角度数据
+    angles = df[angle_column].dropna().values
+
+    # 计算摆动次数
+    oscillation_count = 0
+    in_range = False
+
+    for angle in angles:
+        if angle_range[0] <= angle <= angle_range[1]:
+            if not in_range:
+                oscillation_count += 1
+                in_range = True
+        else:
+            in_range = False
+
+    return {"count": oscillation_count}
+
 
 # def calculate_before_time_percent(actions, status, time):
 #     num = 0

@@ -381,4 +381,63 @@ tools_all = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_missing_records",
+            "description": "在指定时间范围内查找缺失的记录。返回值为字典，包含缺失记录的数量。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "table_name": {
+                        "type": "string",
+                        "description": "数据表名，例如 'Ajia_plc_1.csv'。",
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查找缺失记录的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查找缺失记录的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                },
+                "required": ["start_time", "end_time"],
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "count_oscillations",
+            "description": "在指定时间范围内查询A架的摆动次数。返回值为字典，包含A架摆动次数。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查找缺失记录的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查找缺失记录的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "用来判断摆动，输入'左舷'或'右舷'。",
+                        "enum": ["左舷", "右舷"],
+                    },
+                    "angle_range": {
+                        "type": "tuple(float)",
+                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)。",
+                    }
+                },
+                "required": ["start_time", "end_time", "name", "angle_range"],
+            }
+        }
+    },
 ]

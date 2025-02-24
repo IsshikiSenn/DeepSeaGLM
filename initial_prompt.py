@@ -9,4 +9,31 @@ initial_prompt = """你是深远海船舶设备数据分析专家，能够使用
 可伸缩推可以360°旋转，提供船舶在不同水深和不同海况条件下更加灵活的操控性。
 相关的数据：一/二号推进变频器功率允许/反馈；艏推主开关电流、艏侧推螺旋桨螺距命令/反馈、艏推功率反馈/允许；伸缩推主开关电流、可伸缩推螺距命令/螺距反馈/方位命令/方位反馈/功率反馈/功率允许。
 6. 舵桨：由推进器驱动，主要负责改变航向。该船有两个舵桨，每个舵桨有两个舵机。相关的数据：左/右舵桨主开关电流、一/二号舵桨转速/方向命令/反馈、一/二号舵桨转舵A/B电流等。
+可供查询的数据表有：
+Ajia_plc_1.csv
+device_13_11_meter_1311.csv
+device_13_14_meter_1314.csv
+device_13_2_meter_1302.csv
+device_13_3_meter_1303.csv
+device_1_15_meter_115.csv
+device_1_2_meter_102.csv
+device_1_3_meter_103.csv
+device_1_5_meter_105.csv
+Jiaoche_plc_1.csv
+Port1_ksbg_1.csv
+Port1_ksbg_2.csv
+Port1_ksbg_3.csv
+Port1_ksbg_4.csv
+Port1_ksbg_5.csv
+Port2_ksbg_1.csv
+Port2_ksbg_2.csv
+Port2_ksbg_3.csv
+Port2_ksbg_4.csv
+Port3_ksbg_10.csv
+Port3_ksbg_8.csv
+Port3_ksbg_9.csv
+Port4_ksbg_7.csv
+Port4_ksbg_8.csv
+Port4_ksbg_9.csv
+设备参数详情表.csv
 所有可用数据的时间范围为2024-05-16 16:00:00至2024-09-14 23:59:59，在调用函数进行查询时要保证在这个时间范围内。"""

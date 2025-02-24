@@ -53,7 +53,7 @@ def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
             tools=tools,
         )
         print("! 尝试次数：", attempt)
-        print("! AI回复:", response.choices[0].message.content)
+        print("! AI回复:", response.choices[0].message)
         if (
             response.choices
             and response.choices[0].message
@@ -88,6 +88,8 @@ function_map = {
     "get_field_dict": api.get_field_dict,
     "sum_list": api.sum_list,
     "get_work_time": api.get_work_time,
+    "find_missing_records": api.find_missing_records,
+    "count_oscillations": api.count_oscillations,
 }
 
 
@@ -177,7 +179,6 @@ def select_api_based_on_question(question, tools):
     ):
         print("! 问题包含：动作，提供Api：get_device_status_by_time_range")
         api_list_filter.append("get_device_status_by_time_range")
-        question = question + "动作直接引用不要修改,如【A架摆回】"
     if "开机时长" in question:
         print("! 问题包含：开机时长，供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
@@ -205,6 +206,12 @@ def select_api_based_on_question(question, tools):
     if "作业" in question:
         print("! 问题包含：作业，提供Api：get_work_time")
         api_list_filter.append("get_work_time")
+    if "数据" in question and "缺失" in question:
+        print("! 问题包含：数据、缺失，提供Api：find_missing_records")
+        api_list_filter.append("find_missing_records")
+    if "摆动" in question and "次数" in question:
+        print("! 问题包含：摆动、次数，提供Api：count_oscillations")
+        api_list_filter.append("count_oscillations")
 
     if len(api_list_filter) == 3:
         # 如果问题不匹配上述条件，则根据表名选择 API
@@ -289,6 +296,10 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = (enhanced_prompt+ "（DP过程是指从ON_DP到OFF_DP的过程，应先使用get_device_status_by_time_range查询所有ON_DP和OFF_DP的时间，再计算所有DP过程的能耗，最后使用sum_list函数取总和。）")
     if "小艇入水到小艇落座" in enhanced_prompt:
         enhanced_prompt = (enhanced_prompt+ "（小艇入水到小艇落座是指小艇入水动作发生到小艇落座动作发生的整个时间范围，使用函数计算这段时间内的能耗时应该传入这个时间范围。）")
+    if "数据" in enhanced_prompt and "缺失" in enhanced_prompt:
+        enhanced_prompt = (enhanced_prompt+ "（问题中给出的数据表名称可能有误，请严格按照之前给出的数据表名来查询。）")
+    # if "摆动" in enhanced_prompt and "次数" in enhanced_prompt:
+    #     enhanced_prompt = (enhanced_prompt+ "（使用count_oscillations函数。）")
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -317,7 +328,7 @@ def get_answer(question):
 
 
 if __name__ == "__main__":
-    QUESTION = 54   # 问题编号
+    QUESTION = 53   # 问题编号
     with open("result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
