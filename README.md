@@ -63,7 +63,7 @@
 
 1. `database_in_use`：处理后的数据文件。
 2. `data`：临时数据文件。
-3. `result.jsonl`: 用于提交的答案文件。
+3. `NexAI_result.jsonl`: 用于提交的答案文件。
 
 ### 注释文件
 
@@ -86,7 +86,7 @@
 ├── ai_brain.py                 # 大模型API调用模块
 ├── initial_prompt.py           # 初始prompt模块
 ├── requirements.txt            # 依赖文件
-├── result.jsonl                # 结果文件
+├── NexAI_result.jsonl                # 结果文件
 └── README.md                   # 项目说明文件
 ```
 

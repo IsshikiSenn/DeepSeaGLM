@@ -53,20 +53,15 @@ def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
             tools=tools,
         )
         print("! 尝试次数：", attempt)
-        print("! AI回复:", response.choices[0].message)
+        if response.choices[0].message.content:
+            print("! AI回复:", response.choices[0].message.content)
         if (
             response.choices
             and response.choices[0].message
-            and response.choices[0].message.content
         ):
-            if "```python" in response.choices[0].message.content:
-                # 如果结果包含字符串'python'，则继续下一次循环
-                continue
-            else:
-                # 一旦结果不包含字符串'python'，则停止尝试
-                break
-        else:
             return response
+        else:
+            continue
     return response
 
 
@@ -108,35 +103,48 @@ def get_answer_2(question, tools, api_look: bool = True):
         messages.append(response.choices[0].message.model_dump())
         function_results = []
         # 最大迭代次数
-        max_iterations = 6
-        for _ in range(max_iterations):
-            if not response.choices[0].message.tool_calls:
+        iteration = 1
+        while True:
+            iteration += 1
+            if response.choices[0].message.content and "已完成回答" in response.choices[0].message.content:
                 break
 
-            for tool_call in response.choices[0].message.tool_calls:
-                # 获取工具调用信息
-                print("! 调用函数:", tool_call)
-                args = json.loads(tool_call.function.arguments)
-                function_name = tool_call.function.name
+            if response.choices[0].finish_reason == "tool_calls":
+                for tool_call in response.choices[0].message.tool_calls:
+                    # 获取工具调用信息
+                    print("! 调用函数:", tool_call)
+                    args = json.loads(tool_call.function.arguments)
+                    function_name = tool_call.function.name
 
-                # 执行工具函数
-                if function_name in function_map:
-                    print(f"! 执行工具函数: {function_name}，参数: {args}")
-                    function_result = function_map[function_name](**args)
-                    print(f"! 工具函数执行结果: {function_result}")
+                    # 执行工具函数
+                    if function_name in function_map:
+                        print(f"! 执行工具函数: {function_name}，参数: {args}")
+                        function_result = function_map[function_name](**args)
+                        print(f"! 工具函数执行结果: {function_result}")
 
-                    function_results.append(function_result)
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "content": f"{function_result}",
-                            "tool_call_id": tool_call.id,
-                        }
-                    )
-                else:
-                    print(f"未找到对应的工具函数: {function_name}")
-                    break
-            response = glm4_create(8, messages, filtered_tools)
+                        function_results.append(function_result)
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "content": f"{function_result}",
+                                "tool_call_id": tool_call.id,
+                            }
+                        )
+                    else:
+                        print(f"未找到对应的工具函数: {function_name}")
+                        break
+                print(f"第{iteration}次调用模型")
+                response = glm4_create(8, messages, filtered_tools)
+            else:
+                messages.append(response.choices[0].message.model_dump())
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": "若已完成回答，请只输出'已完成回答'。否则请继续推理，若有需要则调用函数。",
+                    }
+                )
+                print(f"第{iteration}次调用模型")
+                response = glm4_create(8, messages, filtered_tools)
         messages.append(response.choices[0].message.model_dump())
         messages.append(
             {
@@ -144,6 +152,7 @@ def get_answer_2(question, tools, api_look: bool = True):
                 "content": "请根据上述回答过程，简洁地回答问题，不要分段落。",
             }
         )
+        print(f"第{iteration}次调用模型")
         response = glm4_create(8, messages, filtered_tools)
         return response.choices[0].message.content, str(function_results)
     except Exception as e:
@@ -261,7 +270,7 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     enhanced_prompt = enhanced_prompt.replace(
         "运行的平均时间", "运行的平均时间（每天运行时长的平均值）"
     )
-    if "作业" in enhanced_prompt:
+    if "作业" in enhanced_prompt and "开始" in enhanced_prompt:
         enhanced_prompt = (
             enhanced_prompt
             + "若问题没有特殊说明，则深海作业A的开始以ON_DP为标志，DP动作来自定位设备。"
@@ -298,8 +307,6 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = (enhanced_prompt+ "（小艇入水到小艇落座是指小艇入水动作发生到小艇落座动作发生的整个时间范围，使用函数计算这段时间内的能耗时应该传入这个时间范围。）")
     if "数据" in enhanced_prompt and "缺失" in enhanced_prompt:
         enhanced_prompt = (enhanced_prompt+ "（问题中给出的数据表名称可能有误，请严格按照之前给出的数据表名来查询。）")
-    # if "摆动" in enhanced_prompt and "次数" in enhanced_prompt:
-    #     enhanced_prompt = (enhanced_prompt+ "（使用count_oscillations函数。）")
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -309,7 +316,7 @@ def run_conversation_xietong(question):
     question = enhanced(question)
     content_p_1, filtered_tool = select_api_based_on_question(question, tools.tools_all)
     print("content_p_1:", content_p_1)
-    print("filtered_tool:", filtered_tool)
+    print("filtered_tool:", [tool["function"]["name"] for tool in filtered_tool])
     answer, select_result = get_answer_2(
         question=content_p_1, tools=filtered_tool, api_look=False
     )
@@ -320,7 +327,6 @@ def get_answer(question):
     try:
         print(f"! 尝试解决问题：{question}")
         last_answer = run_conversation_xietong(question)
-        last_answer = last_answer.replace(" ", "")
         return last_answer
     except Exception as e:
         print(f"Error occurred while executing get_answer: {e}")
@@ -328,14 +334,19 @@ def get_answer(question):
 
 
 if __name__ == "__main__":
-    QUESTION = 58   # 问题编号
-    with open("result.jsonl", "r", encoding="utf-8") as file:
+    # 问题编号
+    QUESTION = 3
+
+    with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
     answer = get_answer(question)
+
     print("*******************最终答案***********************")
     print(answer)
+
     question_list[QUESTION - 1]["answer"] = answer
-    with open("result.jsonl", "w", encoding="utf-8") as file:
+
+    with open("NexAI_result.jsonl", "w", encoding="utf-8") as file:
         for item in question_list:
             file.write(json.dumps(item, ensure_ascii=False) + "\n")

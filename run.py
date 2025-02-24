@@ -19,8 +19,8 @@ def process_one(question_json):
 
 
 def main():
-    q_path = "../../assets/question.jsonl"
-    result_path = "result.jsonl"
+    q_path = "question.jsonl"
+    result_path = "NexAI_result.jsonl"
     result_json_list = []
 
     # 读取问题文件
