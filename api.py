@@ -488,15 +488,17 @@ def query_device_parameter(parameter_name_cn):
     # 读取设备参数详情表
     df = pd.read_csv("database_in_use/设备参数详情表.csv")
 
+    parameter_name_cn = ".*".join(parameter_name_cn.split(" "))
+
     # 检查参数中文名是否包含在 Channel_Text_CN 列中
     if not df["Channel_Text_CN"].str.contains(parameter_name_cn).any():
-        raise ValueError(f"未找到包含 '{parameter_name_cn}' 的参数中文名")
+        return {"result": (f"未找到包含 '{parameter_name_cn}' 的参数，请减少关键字再查询。")}
 
     # 获取包含参数中文名的所有行
-    parameter_info = df[df["Channel_Text_CN"].str.contains(parameter_name_cn)].iloc[0]
+    parameter_infos = df[df["Channel_Text_CN"].str.contains(parameter_name_cn)]
 
     # 将参数信息转换为字典
-    parameter_dict = {
+    parameter_dict = [{
         "参数名": parameter_info["Channel_Text"],
         "参数中文名": parameter_info["Channel_Text_CN"],
         "参数下限": parameter_info["Alarm_Information_Range_Low"],
@@ -507,7 +509,7 @@ def query_device_parameter(parameter_name_cn):
         "延迟值": parameter_info["Parameter_Information_Delayed"],
         "安全保护设定值": parameter_info["Safety_Protection_Set_Value"],
         "附注": parameter_info["Remarks"],
-    }
+    } for parameter_info in parameter_infos.to_dict(orient="records")]
     return parameter_dict
 
 
@@ -1324,5 +1326,170 @@ def calculate_total_rudder_energy(start_time, end_time):
 
     return energy_results
 
+
+def count_swing_with_rule(start_time, end_time, side: str, front_angle: float, back_angle: float):
+    """
+    计算在给定时间范围内，A架的摆动次数，从超过正向摆动阈值到超过负向摆动阈值可以记为一次完整的摆动（反之亦然）。
+    Params:
+        start_time (str): 起始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        end_time (str): 结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        side (str): 用来判断摆动的位置，输入'左舷'或'右舷'。
+        front_angle (float): 正向摆动阈值。
+        back_angle (float): 负向摆动阈值。
+    Returns:
+        dict: 包含摆动次数的字典。
+    """
+    # 减小阈值
+    front_angle = front_angle -5
+
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 选择正确的角度字段
+    angle_column = "Ajia-1_v" if side == "左舷" else "Ajia-0_v"
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 转换角度列为浮点数
+    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+
+    # 获取角度数据
+    angles = df[angle_column].dropna().values
+
+    swing_count = 0 # 摆动次数
+    swing_direction = None  # 摆动方向，1 为正向，-1 为负向
+    at_front = None # 是否到达正向摆动阈值
+    at_back = None  # 是否到达负向摆动阈值
+
+    for i in range(len(angles) - 1):
+        current_angle = angles[i]
+        next_angle = angles[i + 1]
+        if next_angle - current_angle > 0:      # 即将正向摆动
+            if swing_direction is None or at_front is None or at_back is None:  # 如果尚未初始化
+                swing_direction = 1
+                if back_angle <= current_angle <= front_angle: # 如果在摆动范围内
+                    at_front = False
+                    at_back = False
+                elif current_angle > front_angle:  # 如果超过正向摆动阈值
+                    at_front = True
+                    at_back = False
+                elif current_angle < back_angle:   # 如果超过负向摆动阈值
+                    at_back = True
+                    at_front = False
+            elif swing_direction == 1:  # 如果当前方向为正向
+                if next_angle > front_angle:    # 如果超过正向摆动阈值
+                    if at_back: # 如果到达过负向摆动阈值
+                        swing_count += 1
+                        at_back = False
+                    at_front = True
+                else:
+                    continue
+            elif swing_direction == -1: # 如果当前方向为负向
+                swing_direction = 1
+        elif next_angle - current_angle < 0:    # 即将负向摆动
+            if swing_direction is None or at_front is None or at_back is None:  # 如果尚未初始化
+                swing_direction = -1
+                if back_angle <= current_angle <= front_angle: # 如果在摆动范围内
+                    at_front = False
+                    at_back = False
+                elif current_angle > front_angle:  # 如果超过正向摆动阈值
+                    at_front = True
+                    at_back = False
+                elif current_angle < back_angle:   # 如果超过负向摆动阈值
+                    at_back = True
+                    at_front = False
+            elif swing_direction == -1: # 如果当前方向为负向
+                if next_angle < back_angle: # 如果超过负向摆动阈值
+                    if at_front:    # 如果到达过正向摆动阈值
+                        swing_count += 1
+                        at_front = False
+                    at_back = True
+                else:
+                    continue
+            elif swing_direction == 1:  # 如果当前方向为正向
+                swing_direction = -1
+        else:   # 角度未发生变化
+            continue
+
+    return {"摆动次数": swing_count}
+
+
+
+
+
+
+def count_swing_with_threshold(start_time, end_time, side: str, threshold):
+    """
+    计算在给定时间范围内，A架的摆动次数，同一方向上摆动超过指定阈值算作一次摆动。
+    Params:
+        start_time (str): 起始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        end_time (str): 结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+        side (str): 用来判断摆动的位置，输入'左舷'或'右舷'。
+        threshold (float): 摆动幅度的阈值。
+    Returns:
+        dict: 包含摆动次数的字典。
+    """
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 选择正确的角度字段
+    angle_column = "Ajia-1_v" if side == "左舷" else "Ajia-0_v"
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 转换角度列为浮点数
+    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+
+    # 获取角度数据
+    angles = df[angle_column].dropna().values
+
+    swing_count = 0 # 摆动次数
+    swing_direction = None  # 摆动方向，1 为正向，-1 为负向
+    start_angle = None  # 摆动开始角度
+    end_angle = None    # 摆动结束角度
+
+    for i in range(len(angles) - 1):
+        current_angle = angles[i]   # 当前角度
+        next_angle = angles[i + 1]  # 下一个角度
+        if next_angle - current_angle > 0:      # 即将正向摆动
+            if swing_direction is None: # 如果尚未确定摆动方向
+                swing_direction = 1
+                start_angle = current_angle
+                end_angle = next_angle
+            elif swing_direction == 1:  # 如果当前方向为正向
+                end_angle = next_angle
+            elif swing_direction == -1: # 如果当前方向为负向
+                if abs(end_angle - start_angle) >= threshold:   # 如果摆动幅度超过阈值
+                    swing_count += 1
+                swing_direction = 1
+                start_angle = current_angle
+                end_angle = next_angle
+        elif next_angle - current_angle < 0:    # 即将负向摆动
+            if swing_direction is None: # 如果尚未确定摆动方向
+                swing_direction = -1
+                start_angle = current_angle
+                end_angle = next_angle
+            elif swing_direction == -1: # 如果当前方向为负向
+                end_angle = next_angle
+            elif swing_direction == 1:  # 如果当前方向为正向
+                if abs(end_angle - start_angle) >= threshold:   # 如果摆动幅度超过阈值
+                    swing_count += 1
+                swing_direction = -1
+                start_angle = current_angle
+                end_angle = next_angle
+        else:   # 角度未发生变化
+            continue
+
+    return {"摆动次数": swing_count}
+
+
 if __name__ == "__main__":
-    print(get_work_time("2024-08-23 00:00:00", "2024-08-23 23:59:59"))
+    print(count_swing_with_rule("2024-05-17 00:00:00", "2024-05-20 23:59:59", "右舷", 35, -43))

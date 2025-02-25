@@ -92,7 +92,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "query_device_parameter",
-            "description": "通过参数中文名查询设备参数信息。返回包含参数信息的字典。",
+            "description": "通过参数中文名查询设备参数信息。返回包含参数信息的字典。查询设备的参数时，请尽可能减少查询关键字的长度，以免查询失败。例如，要查询三号柴油发电机组所有与压力相关的数值类型参数，则查询'三号柴油发电机组 压力'。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -587,6 +587,74 @@ tools_all = [
                         "description": "要计算船舵能耗的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
                     },
                     "required": ["start_time", "end_time"],
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "count_swing_with_rule",
+            "description": "计算在给定时间范围内，A架的摆动次数，从超过正向摆动阈值到超过负向摆动阈值可以记为一次完整的摆动（反之亦然）。返回值为包含摆动次数的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算摆动次数的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算摆动次数的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "side": {
+                        "type": "string",
+                        "description": "用来判断摆动的位置，输入'左舷'或'右舷'。",
+                        "enum": ["左舷", "右舷"],
+                    },
+                    "front_angle": {
+                        "type": "float",
+                        "description": "正向摆动阈值，应该输入大于0的值。",
+                    },
+                    "back_angle": {
+                        "type": "float",
+                        "description": "反向摆动阈值，应该输入小于0的值。",
+                    },
+                    "required": ["start_time", "end_time", "side", "front_angle", "back_angle"],
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "count_swing_with_threshold",
+            "description": "计算在给定时间范围内，A架的摆动次数，同一方向上摆动超过指定阈值算作一次摆动。返回值为包含摆动次数的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算摆动次数的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算摆动次数的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "side": {
+                        "type": "string",
+                        "description": "用来判断摆动的位置，输入'左舷'或'右舷'。",
+                        "enum": ["左舷", "右舷"],
+                    },
+                    "threshold": {
+                        "type": "float",
+                        "description": "摆动幅度的阈值。",
+                    },
+                    "required": ["start_time", "end_time", "side", "threshold"],
                 },
             },
         },

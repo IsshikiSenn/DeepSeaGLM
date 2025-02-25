@@ -31,6 +31,8 @@ function_map = {
     "find_max_value": api.find_max_value,
     "find_avg_value": api.find_avg_value,
     "calculate_total_rudder_energy": api.calculate_total_rudder_energy,
+    "count_swing_with_threshold": api.count_swing_with_threshold,
+    "count_swing_with_rule": api.count_swing_with_rule,
 }
 
 
@@ -143,7 +145,7 @@ def get_answer_2(question, tools, api_look: bool = True):
         messages.append(
             {
                 "role": "user",
-                "content": "请根据上述回答过程，简洁地回答问题，不要分段落。",
+                "content": "请根据上述回答过程，简洁地回答问题，不要分段落。注意加上数值的单位、回答格式等。",
             }
         )
         print(f"第{iteration}次调用模型")
@@ -220,8 +222,11 @@ def select_api_based_on_question(question, tools):
         print("! 问题包含：数据、缺失，提供Api：find_missing_records")
         api_list_filter.append("find_missing_records")
     if "摆动" in question and "次数" in question:
-        print("! 问题包含：摆动、次数，提供Api：count_oscillations")
-        api_list_filter.append("count_oscillations")
+        print(
+            "! 问题包含：摆动、次数，提供Api：count_swing_with_rule、count_swing_with_threshold"
+        )
+        api_list_filter.append("count_swing_with_rule")
+        api_list_filter.append("count_swing_with_threshold")
     if "最小值" in question:
         print("! 问题包含：最小值，提供Api：find_min_value")
         api_list_filter.append("find_min_value")
@@ -340,6 +345,8 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
             enhanced_prompt
             + "（深海作业分为下放（布放）阶段和回收阶段，一般下放阶段发生在回收阶段之前。）"
         )
+    if "报警" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（符号'↑'表示只有在数据大于报警值时才报警，符号'↓'表示当数据小于报警值时报警。例如，题目说参数为超过160，报警值为730↑，则可能不报警，因为可能是小于730。例如，题目说参数为低于500，报警值为210↓，则可能不报警，因为可能是大于210。）"
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -368,7 +375,7 @@ def get_answer(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 62
+    QUESTION = 39
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
