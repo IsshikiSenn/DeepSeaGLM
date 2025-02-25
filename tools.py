@@ -385,13 +385,14 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "find_missing_records",
-            "description": "在指定时间范围内查找缺失的记录。返回值为字典，包含缺失记录的数量。",
+            "description": "在指定时间范围内查找缺失的记录。返回值为字典，包含缺失记录的数量与缺失比例。如果查询一个时间段，建议一天一天算。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "table_name": {
                         "type": "string",
-                        "description": "数据表名，例如 'Ajia_plc_1.csv'。",
+                        "format": "string",
+                        "enum": ["Ajia_plc_1.csv", "Jiaoche_plc_1.csv","Port1_ksbg_1.csv"],
                     },
                     "start_time": {
                         "type": "string",
@@ -412,7 +413,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "count_oscillations",
-            "description": "在指定时间范围内查询A架的摆动次数。返回值为字典，包含A架摆动次数。",
+            "description": "在指定时间范围内查询A架的摆动次数。返回值为字典，包含A架摆动次数。如果是超过角度X，则元组取(X, 999)",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -431,12 +432,16 @@ tools_all = [
                         "description": "用来判断摆动，输入'左舷'或'右舷'。",
                         "enum": ["左舷", "右舷"],
                     },
-                    "angle_range": {
-                        "type": "tuple(float)",
-                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)。",
+                    "angle_range_start": {
+                        "type": "float",
+                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)，这里是第一个值。",
+                    },
+                    "angle_range_end": {
+                        "type": "float",
+                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)，这里是第二个值。",
                     }
                 },
-                "required": ["start_time", "end_time", "name", "angle_range"],
+                "required": ["start_time", "end_time", "name", "angle_range_start", "angle_range_end"],
             }
         }
     },

@@ -1,11 +1,16 @@
 import json
 import os
+import traceback
+import re
+
+import json
 
 from zhipuai import ZhipuAI
 
 import api
 import tools
 from initial_prompt import initial_prompt
+import Sample
 
 folders = ["database_in_use", "data"]
 if any(not os.path.exists(folder) for folder in folders):
@@ -93,8 +98,29 @@ function_map = {
 }
 
 
-def get_answer_2(question, tools, api_look: bool = True):
+def get_answer_3(question, tools, api_look: bool = True):
     filtered_tools = tools
+
+    print(f"🔹 任务拆解前的问题：{question}")
+
+    # **任务拆解（CoT）**
+    task_decomposition_prompt = f"""
+            你是一个智能任务拆解助手。请逐步思考，拆解成多个可执行的子任务，并确定需要调用的 API。
+            先可以用使用的工具时{filtered_tools}。
+            只需要任务分解的JSON，不需要其他内容。
+            返回 JSON 格式，格式如下：
+            {{
+                "subtasks": [
+                    {{"step": 1, "task": "查询设备状态", "api": "get_device_status_by_time_range"}},
+                    {{"step": 2, "task": "计算能耗", "api": "calculate_total_energy"}}
+                ]
+            }}
+            问题：{question}
+            """
+    print()
+    task_response = glm4_create(3, [{"role": "user", "content": task_decomposition_prompt}], [])
+    print("! 任务拆解结果:", task_response.choices[0].message.content)
+
     try:
         messages = [
             {
@@ -103,9 +129,11 @@ def get_answer_2(question, tools, api_look: bool = True):
             },
             {"role": "user", "content": question},
         ]
+
         # 第一次调用模型
         response = glm4_create(6, messages, filtered_tools)
         messages.append(response.choices[0].message.model_dump())
+
         function_results = []
         # 最大迭代次数
         max_iterations = 6
@@ -150,14 +178,134 @@ def get_answer_2(question, tools, api_look: bool = True):
         print(f"Error generating answer for question: {question}, {e}")
         return None, None
 
+def get_answer_2(question, tools, temple, api_look: bool = True):
+    filtered_tools = tools
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": initial_prompt,
+            },
+            {"role": "user", "content": question},
+        ]
+
+        # **任务拆解（CoT）**
+        task_decomposition_prompt = f"""
+                    你是一个智能任务拆解助手。请逐步思考，拆解成多个可执行的子任务，并确定需要调用的 API。
+                    你只能使用这些工具，严格看下工具的输入与输出{[{tool['function']['name']: tool['function']['description']} for tool in filtered_tools]}。
+                    这是任务分解的参考是{[{"question": one_temple["question"], "subtasks": one_temple["subtasks"]} for one_temple in temple]}
+                    如果需要自我思考处理，就在api里填入"self_thought"。
+                    如果需要输出，则api里填入"out_put"。
+                    只需要任务分解的JSON，尽可能细致，JSON只需要step，task和api，不需要JSON的格式化标记。
+                    返回 JSON的格式，格式如下：
+                    {{
+                        "subtasks": [
+                            {{"step": 1, "task": "查询设备状态", "api": "get_device_status_by_time_range"}},
+                            {{"step": 2, "task": "计算能耗", "api": "calculate_total_energy"}}
+                        ]
+                    }}
+                    问题：{question}
+                    """
+        task_response = glm4_create(3, [{"role": "user", "content": task_decomposition_prompt}], [])
+
+        def clean_json_text(text):
+            # 去除 Markdown 代码块包裹（```json ... ```)
+            text = re.sub(r"^```json\s*", "", text)  # 去掉开头的 ```json
+            text = re.sub(r"```$", "", text)  # 去掉结尾的 ```
+            return text.strip()  # 额外去掉前后空格
+
+
+        clear_text = clean_json_text(task_response.choices[0].message.content)
+        print("! 任务拆解结果:", clear_text)
+
+        self_thought_memory = {"steps" : []}  # 记录所有 step 的输入输出
+
+        # 解析任务拆解结果
+        task_decomposition = json.loads(clear_text)
+        subtasks = task_decomposition.get("subtasks", [])
+
+        function_results = []
+        messages.append({"role": "assistant", "content": f"任务拆解: {subtasks}"})
+
+        for subtask in subtasks:
+            print(f"执行子任务 {subtask['step']}: {subtask['task']}")
+            print(self_thought_memory)
+
+            # **让 LLM 生成子任务的具体执行指令**
+            subtask_prompt = f"""
+                你需要执行如下子任务：
+                {subtask["task"]}
+                你需要调用的工具是:{subtask["api"]}
+                你只需要提供参数就行，不要思考别的方法。
+                请结合 CoT 方式思考，逐步拆解执行，并调用合适的工具。
+            """
+
+            if subtask['api'] == "self_thought":
+                subtask_prompt = f"""
+                    你需要执行如下子任务：
+                    {subtask["task"]}
+                    - 你过去的任务历史（输入 & 输出）如下：
+                    {json.dumps(self_thought_memory, ensure_ascii=False, indent=2, default=str)}
+                    你需要结合之前的输入输出来解决这个问题，回答最好主谓宾一句话一气呵成。
+                """
+            if subtask['api'] == "out_put":
+                print("final")
+                subtask_prompt = f"""
+                    你要解决的问题是:{question}
+                    你只需要通过历史记录告诉我答案，不需要调用任何工具。
+                    - 你过去的任务历史（输入 & 输出）如下：
+                    {json.dumps(self_thought_memory, ensure_ascii=False, indent=2, default=str)}。
+                """
+            response = glm4_create(6, [{"role": "user", "content": subtask_prompt}], filtered_tools)
+            messages.append(response.choices[0].message.model_dump())
+
+            output = response.choices[0].message.model_dump()
+
+            if not response.choices[0].message.tool_calls:
+                continue  # 如果 LLM 没有调用工具，跳过
+
+            for tool_call in response.choices[0].message.tool_calls:
+                args = json.loads(tool_call.function.arguments)
+                function_name = tool_call.function.name
+
+                if function_name in function_map:
+                    print(f"! 执行工具函数: {function_name}，参数: {args}")
+                    function_result = function_map[function_name](**args)
+
+                    output = function_result
+
+                    function_results.append(function_result)
+                    messages.append({"role": "tool", "content": f"{function_result}", "tool_call_id": tool_call.id})
+                else:
+                    print(f"未找到对应的工具函数: {function_name}")
+
+                # **存储 step 记录**
+                self_thought_memory["steps"].append({
+                    "step": subtask["step"],
+                    "input": subtask["task"],
+                    "output": output
+                })
+
+        # **最终总结回答**
+        messages.append({"role": "user", "content": "请总结所有子任务的结果，并生成最终答案。一句话尽可能详细得回答问题，不用给我过程。如果题目有输出要求，严格执行，如有单位，记得单位。"})
+        final_response = glm4_create(6, messages, filtered_tools)
+        return final_response.choices[0].message.content, str(function_results)
+    except Exception as e:
+        print(f"Error generating answer for question: {question}, {e}")
+        traceback.print_exc()  # 打印完整的错误堆栈
+        return None, None
+
 
 def select_api_based_on_question(question, tools):
+
+    temple = []
+
     api_list_filter = ["calculate_percent", "query_device_parameter", "sum_list"]
     # 根据问题内容选择相应的 API
     if "能耗" in question:
         print("! 问题包含：能耗，提供Api：calculate_total_energy")
         api_list_filter.append("calculate_total_energy")
-        if "推进系统" in question or "侧推" in question:
+        if "推进" in question or "侧推" in question:
             print("! 问题包含：推进系统，提供Api：calculate_total_energy_consumption")
             api_list_filter.append("calculate_total_energy_consumption")
         if "甲板机械" in question or "折臂吊车" in question:
@@ -208,7 +356,10 @@ def select_api_based_on_question(question, tools):
         api_list_filter.append("get_work_time")
     if "数据" in question and "缺失" in question:
         print("! 问题包含：数据、缺失，提供Api：find_missing_records")
+        temple.append(Sample.task_temple["数据缺失"])
         api_list_filter.append("find_missing_records")
+        if "缺失比例" in question:
+            api_list_filter.remove("calculate_percent")
     if "摆动" in question and "次数" in question:
         print("! 问题包含：摆动、次数，提供Api：count_oscillations")
         api_list_filter.append("count_oscillations")
@@ -238,9 +389,9 @@ def select_api_based_on_question(question, tools):
     ]
     # 返回结果
     if "content_p_1" in locals():
-        return content_p_1, filtered_tools
+        return content_p_1, filtered_tools, temple
     else:
-        return question, filtered_tools
+        return question, filtered_tools, temple
 
 
 def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
@@ -307,11 +458,14 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
 
 def run_conversation_xietong(question):
     question = enhanced(question)
-    content_p_1, filtered_tool = select_api_based_on_question(question, tools.tools_all)
+    content_p_1, filtered_tool, temple = select_api_based_on_question(question, tools.tools_all)
     print("content_p_1:", content_p_1)
     print("filtered_tool:", filtered_tool)
     answer, select_result = get_answer_2(
-        question=content_p_1, tools=filtered_tool, api_look=False
+        question=content_p_1,
+        tools=filtered_tool,
+        temple=temple,
+        api_look=False
     )
     return answer
 
@@ -320,15 +474,16 @@ def get_answer(question):
     try:
         print(f"! 尝试解决问题：{question}")
         last_answer = run_conversation_xietong(question)
-        last_answer = last_answer.replace(" ", "")
+        # last_answer = last_answer.replace(" ", "")
         return last_answer
     except Exception as e:
+        traceback.print_exc()
         print(f"Error occurred while executing get_answer: {e}")
         return "An error occurred while retrieving the answer."
 
 
 if __name__ == "__main__":
-    QUESTION = 53   # 问题编号
+    QUESTION = 100 # 问题编号
     with open("result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
