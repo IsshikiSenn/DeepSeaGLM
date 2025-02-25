@@ -4,11 +4,13 @@ from field_dict import field_dict
 
 def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
     """
-    计算指定时间段内的开机时长，并返回三种格式的开机时长
-    :param start_time: 查询的开始时间（字符串或 datetime 类型）
-    :param end_time: 查询的结束时间（字符串或 datetime 类型）
-    :param shebeiname: 设备名称，默认为 '折臂吊车'
-    :return: 包含三种格式开机时长的字符串
+    计算某个设备在指定时间段内的开机时长，以分钟为单位。
+    Params:
+        start_time: 查询的开始时间（字符串或 datetime 类型）。
+        end_time: 查询的结束时间（字符串或 datetime 类型）。
+        shebeiname: 设备名称，默认为 '折臂吊车'。
+    Returns:
+        dict: 包括开机次数、总开机时长和开机时长列表的字典。
     """
     print("-------calculate_uptime执行***计算开机时间-------")
     # 设备配置映射：设备名称 -> (文件路径, 开机状态, 关机状态)
@@ -24,7 +26,7 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
 
     # 检查设备名称是否有效
     if shebeiname not in device_config:
-        raise ValueError(f"未知的设备名称: {shebeiname}")
+        return {"result": f"计算失败，未知的设备名称: {shebeiname}"}
 
     # 获取设备配置
     file_path, start_status, end_status = device_config[shebeiname]
@@ -45,6 +47,9 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
     # 初始化变量
     total_duration = pd.Timedelta(0)
     start_uptime = None
+    end_uptime = None
+    count = 0
+    uptime_list = []
 
     # 遍历筛选后的数据
     for index, row in df_filtered.iterrows():
@@ -52,29 +57,22 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
             start_uptime = row["csvTime"]
         elif row["status"] == end_status and start_uptime is not None:
             end_uptime = row["csvTime"]
-            total_duration += end_uptime - start_uptime
+            duration = end_uptime - start_uptime
+            count += 1
+            uptime_list.append({f"第{count}次开机时长": int(duration.total_seconds() / 60)})
+            total_duration += duration
             start_uptime = None
 
     # 计算三种格式的开机时长
     seconds = total_duration.total_seconds()
     minutes = int(seconds / 60)
-    hours = int(seconds // 3600)
-    remaining_minutes = int((seconds % 3600) // 60)
-
-    # 将小时和分钟格式化为两位数
-    hours_str = f"{hours:02d}"  # 使用格式化字符串确保两位数
-    minutes_str = f"{remaining_minutes:02d}"  # 使用格式化字符串确保两位数
 
     # 返回三种格式的开机时长
-    result = {
-        "function": "calculate_uptime",  # 说明这个返回结果来自哪个函数
-        "result": (
-            f"开机时长：{seconds}秒",
-            f"开机时长：{minutes}分钟",
-            f"开机时长：{hours_str}小时{minutes_str}分钟",
-        ),
+    return {
+        "开机次数": count,
+        "总开机时长": minutes,
+        "开机时长列表": uptime_list,
     }
-    return result
 
 
 def compute_operational_duration(start_time, end_time, device_name="A架"):
@@ -416,11 +414,11 @@ def calculate_total_deck_machinery_energy(start_time, end_time):
     total_energy_jiaoche = filtered_data_jiaoche["energy_kWh"].sum()
 
     return {
-        "折臂吊车":total_energy_zhebidiaoche,
-        "一号门架":total_energy_mengjia1,
-        "二号门架":total_energy_mengjia2,
-        "绞车":total_energy_jiaoche,
-        "总能耗":round(
+        "折臂吊车": total_energy_zhebidiaoche,
+        "一号门架": total_energy_mengjia1,
+        "二号门架": total_energy_mengjia2,
+        "绞车": total_energy_jiaoche,
+        "总能耗": round(
             total_energy_zhebidiaoche
             + total_energy_mengjia1
             + total_energy_mengjia2
@@ -492,24 +490,29 @@ def query_device_parameter(parameter_name_cn):
 
     # 检查参数中文名是否包含在 Channel_Text_CN 列中
     if not df["Channel_Text_CN"].str.contains(parameter_name_cn).any():
-        return {"result": (f"未找到包含 '{parameter_name_cn}' 的参数，请减少关键字再查询。")}
+        return {
+            "result": (f"未找到包含 '{parameter_name_cn}' 的参数，请减少关键字再查询。")
+        }
 
     # 获取包含参数中文名的所有行
     parameter_infos = df[df["Channel_Text_CN"].str.contains(parameter_name_cn)]
 
     # 将参数信息转换为字典
-    parameter_dict = [{
-        "参数名": parameter_info["Channel_Text"],
-        "参数中文名": parameter_info["Channel_Text_CN"],
-        "参数下限": parameter_info["Alarm_Information_Range_Low"],
-        "参数上限": parameter_info["Alarm_Information_Range_High"],
-        "报警值的单位": parameter_info["Alarm_Information_Unit"],
-        "报警值": parameter_info["Parameter_Information_Alarm"],
-        "屏蔽值": parameter_info["Parameter_Information_Inhibit"],
-        "延迟值": parameter_info["Parameter_Information_Delayed"],
-        "安全保护设定值": parameter_info["Safety_Protection_Set_Value"],
-        "附注": parameter_info["Remarks"],
-    } for parameter_info in parameter_infos.to_dict(orient="records")]
+    parameter_dict = [
+        {
+            "参数名": parameter_info["Channel_Text"],
+            "参数中文名": parameter_info["Channel_Text_CN"],
+            "参数下限": parameter_info["Alarm_Information_Range_Low"],
+            "参数上限": parameter_info["Alarm_Information_Range_High"],
+            "报警值的单位": parameter_info["Alarm_Information_Unit"],
+            "报警值": parameter_info["Parameter_Information_Alarm"],
+            "屏蔽值": parameter_info["Parameter_Information_Inhibit"],
+            "延迟值": parameter_info["Parameter_Information_Delayed"],
+            "安全保护设定值": parameter_info["Safety_Protection_Set_Value"],
+            "附注": parameter_info["Remarks"],
+        }
+        for parameter_info in parameter_infos.to_dict(orient="records")
+    ]
     return parameter_dict
 
 
@@ -617,11 +620,11 @@ def calculate_total_energy_consumption(start_time, end_time):
     total_energy_shensuotui = filtered_data_shensuotui["energy_kWh"].sum()
 
     return {
-        "一号推进变频器":total_energy_1,
-        "二号推进变频器":total_energy_2,
-        "艏推":total_energy_shoutui,
-        "可伸缩推":total_energy_shensuotui,
-        "总能耗":round(
+        "一号推进变频器": total_energy_1,
+        "二号推进变频器": total_energy_2,
+        "艏推": total_energy_shoutui,
+        "可伸缩推": total_energy_shensuotui,
+        "总能耗": round(
             total_energy_1
             + total_energy_2
             + total_energy_shoutui
@@ -825,11 +828,13 @@ def calculate_generator_energy_consumption(start_time, end_time):
     total_energy_4 = filtered_data_4["energy_kWh"].sum()
 
     return {
-        "一号发电机":total_energy_1,
-        "二号发电机":total_energy_2,
-        "三号发电机":total_energy_3,
-        "四号发电机":total_energy_4,
-        "总能耗":round(total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2),
+        "一号发电机": total_energy_1,
+        "二号发电机": total_energy_2,
+        "三号发电机": total_energy_3,
+        "四号发电机": total_energy_4,
+        "总能耗": round(
+            total_energy_1 + total_energy_2 + total_energy_3 + total_energy_4, 2
+        ),
     }
 
 
@@ -997,11 +1002,13 @@ def calculate_fuel_consumption(start_time, end_time):
     total_fuel_4 = filtered_data_4["fuel_L"].sum()
 
     return {
-        "一号发电机":total_fuel_1,
-        "二号发电机":total_fuel_2,
-        "三号发电机":total_fuel_3,
-        "四号发电机":total_fuel_4,
-        "总燃油消耗量":round(total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2),
+        "一号发电机": total_fuel_1,
+        "二号发电机": total_fuel_2,
+        "三号发电机": total_fuel_3,
+        "四号发电机": total_fuel_4,
+        "总燃油消耗量": round(
+            total_fuel_1 + total_fuel_2 + total_fuel_3 + total_fuel_4, 2
+        ),
     }
 
 
@@ -1059,7 +1066,8 @@ def get_field_dict():
     """
     return field_dict
 
-def sum_two(a: float,b: float):
+
+def sum_two(a: float, b: float):
     """
     计算两个元素之和。
     Args:
@@ -1068,7 +1076,8 @@ def sum_two(a: float,b: float):
     Returns:
         float: 两个元素之和。
     """
-    return round(a+b, 2)
+    return round(a + b, 2)
+
 
 def get_work_time(start_time, end_time):
     """
@@ -1079,11 +1088,23 @@ def get_work_time(start_time, end_time):
     Returns:
         list of dict: 包含作业开始时间和结束时间的字典列表。
     """
-    action_ajia = get_device_status_by_time_range(start_time, end_time, "A架")["正在进行的关键动作"]
-    action_dp = get_device_status_by_time_range(start_time, end_time, "定位设备")["正在进行的关键动作"]
+    action_ajia = get_device_status_by_time_range(start_time, end_time, "A架")[
+        "正在进行的关键动作"
+    ]
+    action_dp = get_device_status_by_time_range(start_time, end_time, "定位设备")[
+        "正在进行的关键动作"
+    ]
 
-    action_ajia = [action for action in action_ajia if action["status"] == "开机" or action["status"] == "关机"]
-    action_dp = [action for action in action_dp if action["status"] == "ON_DP" or action["status"] == "OFF_DP"]
+    action_ajia = [
+        action
+        for action in action_ajia
+        if action["status"] == "开机" or action["status"] == "关机"
+    ]
+    action_dp = [
+        action
+        for action in action_dp
+        if action["status"] == "ON_DP" or action["status"] == "OFF_DP"
+    ]
 
     time_section = []
     start = None
@@ -1113,44 +1134,50 @@ def get_work_time(start_time, end_time):
         if start <= current_end:  # 如果当前时间片段与下一个时间片段重叠或相邻
             current_end = max(current_end, end)  # 合并时间片段
         else:
-            merged_time_section.append({"作业开始": current_start, "作业结束":current_end})  # 保存当前合并后的时间片段
+            merged_time_section.append(
+                {"作业开始": current_start, "作业结束": current_end}
+            )  # 保存当前合并后的时间片段
             current_start, current_end = start, end  # 开始新的时间片段
 
     # 添加最后一个合并后的时间片段
-    merged_time_section.append({"作业开始": current_start, "作业结束":current_end})
+    merged_time_section.append({"作业开始": current_start, "作业结束": current_end})
 
     return merged_time_section
 
 
 def find_missing_records(table_name: str, start_time, end_time):
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
 
     # 确保时间格式为 年-月-日 时:分
-    df['csvTime'] = df['csvTime'].dt.strftime('%Y-%m-%d %H:%M')
+    df["csvTime"] = df["csvTime"].dt.strftime("%Y-%m-%d %H:%M")
 
     # 生成完整的时间范围
-    full_time_range = pd.date_range(start=start_time, end=end_time, freq='T').strftime('%Y-%m-%d %H:%M')
+    full_time_range = pd.date_range(start=start_time, end=end_time, freq="T").strftime(
+        "%Y-%m-%d %H:%M"
+    )
 
     # 现有数据的时间集合
-    existing_times = set(df['csvTime'])
+    existing_times = set(df["csvTime"])
 
     # 找到缺失的时间点
     missing_times = [t for t in full_time_range if t not in existing_times]
 
     # 返回字典
-    return {
-        "missing_count": len(missing_times)
-    }
+    return {"missing_count": len(missing_times)}
 
 
-def count_oscillations(start_time, end_time, name: str, angle_range_start, angle_range_end):
+def count_oscillations(
+    start_time, end_time, name: str, angle_range_start, angle_range_end
+):
 
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/" + "Ajia_plc_1" + ".csv", parse_dates=['csvTime'])
+    df = pd.read_csv(
+        "./database_in_use/" + "Ajia_plc_1" + ".csv", parse_dates=["csvTime"]
+    )
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
@@ -1159,10 +1186,10 @@ def count_oscillations(start_time, end_time, name: str, angle_range_start, angle
     angle_column = "Ajia-1_v" if name == "左舷" else "Ajia-0_v"
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 转换角度列为浮点数
-    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+    df[angle_column] = pd.to_numeric(df[angle_column], errors="coerce")
 
     # 获取角度数据
     angles = df[angle_column].dropna().values
@@ -1194,19 +1221,19 @@ def find_min_value(start_time, end_time, table_name, column_name):
         dict: 包含最小值和对应时间的字典。
     """
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 获取最小值
     min_value = df[column_name].min()
 
     # 获取最小值对应的时间
-    min_time = df.loc[df[column_name].idxmin(), 'csvTime']
+    min_time = df.loc[df[column_name].idxmin(), "csvTime"]
 
     return {"min_value": min_value, "min_time": min_time}
 
@@ -1223,19 +1250,19 @@ def find_max_value(start_time, end_time, table_name, column_name):
         dict: 包含最大值和对应时间的字典。
     """
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 获取最小值
     max_value = df[column_name].max()
 
     # 获取最小值对应的时间
-    max_time = df.loc[df[column_name].idxmax(), 'csvTime']
+    max_time = df.loc[df[column_name].idxmax(), "csvTime"]
 
     return {"min_value": max_value, "min_time": max_time}
 
@@ -1252,13 +1279,13 @@ def find_avg_value(start_time, end_time, table_name, column_name):
         dict: 包含平均值的字典。
     """
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 获取平均值
     avg_value = df[column_name].mean()
@@ -1327,7 +1354,9 @@ def calculate_total_rudder_energy(start_time, end_time):
     return energy_results
 
 
-def count_swing_with_rule(start_time, end_time, side: str, front_angle: float, back_angle: float):
+def count_swing_with_rule(
+    start_time, end_time, side: str, front_angle: float, back_angle: float
+):
     """
     计算在给定时间范围内，A架的摆动次数，从超过正向摆动阈值到超过负向摆动阈值可以记为一次完整的摆动（反之亦然）。
     Params:
@@ -1340,10 +1369,10 @@ def count_swing_with_rule(start_time, end_time, side: str, front_angle: float, b
         dict: 包含摆动次数的字典。
     """
     # 减小阈值
-    front_angle = front_angle -5
+    front_angle = front_angle - 5
 
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
@@ -1352,59 +1381,63 @@ def count_swing_with_rule(start_time, end_time, side: str, front_angle: float, b
     angle_column = "Ajia-1_v" if side == "左舷" else "Ajia-0_v"
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 转换角度列为浮点数
-    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+    df[angle_column] = pd.to_numeric(df[angle_column], errors="coerce")
 
     # 获取角度数据
     angles = df[angle_column].dropna().values
 
-    swing_count = 0 # 摆动次数
+    swing_count = 0  # 摆动次数
     swing_direction = None  # 摆动方向，1 为正向，-1 为负向
-    at_front = None # 是否到达正向摆动阈值
+    at_front = None  # 是否到达正向摆动阈值
     at_back = None  # 是否到达负向摆动阈值
 
     for i in range(len(angles) - 1):
         current_angle = angles[i]
         next_angle = angles[i + 1]
-        if next_angle - current_angle > 0:      # 即将正向摆动
-            if swing_direction is None or at_front is None or at_back is None:  # 如果尚未初始化
+        if next_angle - current_angle > 0:  # 即将正向摆动
+            if (
+                swing_direction is None or at_front is None or at_back is None
+            ):  # 如果尚未初始化
                 swing_direction = 1
-                if back_angle <= current_angle <= front_angle: # 如果在摆动范围内
+                if back_angle <= current_angle <= front_angle:  # 如果在摆动范围内
                     at_front = False
                     at_back = False
                 elif current_angle > front_angle:  # 如果超过正向摆动阈值
                     at_front = True
                     at_back = False
-                elif current_angle < back_angle:   # 如果超过负向摆动阈值
+                elif current_angle < back_angle:  # 如果超过负向摆动阈值
                     at_back = True
                     at_front = False
             elif swing_direction == 1:  # 如果当前方向为正向
-                if next_angle > front_angle:    # 如果超过正向摆动阈值
-                    if at_back: # 如果到达过负向摆动阈值
+                if next_angle > front_angle:  # 如果超过正向摆动阈值
+                    if at_back:  # 如果到达过负向摆动阈值
                         swing_count += 1
                         at_back = False
                     at_front = True
                 else:
                     continue
-            elif swing_direction == -1: # 如果当前方向为负向
+            elif swing_direction == -1:  # 如果当前方向为负向
                 swing_direction = 1
-        elif next_angle - current_angle < 0:    # 即将负向摆动
-            if swing_direction is None or at_front is None or at_back is None:  # 如果尚未初始化
+        elif next_angle - current_angle < 0:  # 即将负向摆动
+            if (
+                swing_direction is None or at_front is None or at_back is None
+            ):  # 如果尚未初始化
                 swing_direction = -1
-                if back_angle <= current_angle <= front_angle: # 如果在摆动范围内
+                if back_angle <= current_angle <= front_angle:  # 如果在摆动范围内
                     at_front = False
                     at_back = False
                 elif current_angle > front_angle:  # 如果超过正向摆动阈值
                     at_front = True
                     at_back = False
-                elif current_angle < back_angle:   # 如果超过负向摆动阈值
+                elif current_angle < back_angle:  # 如果超过负向摆动阈值
                     at_back = True
                     at_front = False
-            elif swing_direction == -1: # 如果当前方向为负向
-                if next_angle < back_angle: # 如果超过负向摆动阈值
-                    if at_front:    # 如果到达过正向摆动阈值
+            elif swing_direction == -1:  # 如果当前方向为负向
+                if next_angle < back_angle:  # 如果超过负向摆动阈值
+                    if at_front:  # 如果到达过正向摆动阈值
                         swing_count += 1
                         at_front = False
                     at_back = True
@@ -1412,14 +1445,10 @@ def count_swing_with_rule(start_time, end_time, side: str, front_angle: float, b
                     continue
             elif swing_direction == 1:  # 如果当前方向为正向
                 swing_direction = -1
-        else:   # 角度未发生变化
+        else:  # 角度未发生变化
             continue
 
     return {"摆动次数": swing_count}
-
-
-
-
 
 
 def count_swing_with_threshold(start_time, end_time, side: str, threshold):
@@ -1434,7 +1463,7 @@ def count_swing_with_threshold(start_time, end_time, side: str, threshold):
         dict: 包含摆动次数的字典。
     """
     # 读取 CSV 文件
-    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=['csvTime'])
+    df = pd.read_csv("./database_in_use/Ajia_plc_1.csv", parse_dates=["csvTime"])
 
     start_time = pd.to_datetime(start_time)
     end_time = pd.to_datetime(end_time)
@@ -1443,53 +1472,74 @@ def count_swing_with_threshold(start_time, end_time, side: str, threshold):
     angle_column = "Ajia-1_v" if side == "左舷" else "Ajia-0_v"
 
     # 过滤时间范围内的数据
-    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+    df = df[(df["csvTime"] >= start_time) & (df["csvTime"] <= end_time)]
 
     # 转换角度列为浮点数
-    df[angle_column] = pd.to_numeric(df[angle_column], errors='coerce')
+    df[angle_column] = pd.to_numeric(df[angle_column], errors="coerce")
 
     # 获取角度数据
     angles = df[angle_column].dropna().values
 
-    swing_count = 0 # 摆动次数
+    swing_count = 0  # 摆动次数
     swing_direction = None  # 摆动方向，1 为正向，-1 为负向
     start_angle = None  # 摆动开始角度
-    end_angle = None    # 摆动结束角度
+    end_angle = None  # 摆动结束角度
 
     for i in range(len(angles) - 1):
-        current_angle = angles[i]   # 当前角度
+        current_angle = angles[i]  # 当前角度
         next_angle = angles[i + 1]  # 下一个角度
-        if next_angle - current_angle > 0:      # 即将正向摆动
-            if swing_direction is None: # 如果尚未确定摆动方向
+        if next_angle - current_angle > 0:  # 即将正向摆动
+            if swing_direction is None:  # 如果尚未确定摆动方向
                 swing_direction = 1
                 start_angle = current_angle
                 end_angle = next_angle
             elif swing_direction == 1:  # 如果当前方向为正向
                 end_angle = next_angle
-            elif swing_direction == -1: # 如果当前方向为负向
-                if abs(end_angle - start_angle) >= threshold:   # 如果摆动幅度超过阈值
+            elif swing_direction == -1:  # 如果当前方向为负向
+                if abs(end_angle - start_angle) >= threshold:  # 如果摆动幅度超过阈值
                     swing_count += 1
                 swing_direction = 1
                 start_angle = current_angle
                 end_angle = next_angle
-        elif next_angle - current_angle < 0:    # 即将负向摆动
-            if swing_direction is None: # 如果尚未确定摆动方向
+        elif next_angle - current_angle < 0:  # 即将负向摆动
+            if swing_direction is None:  # 如果尚未确定摆动方向
                 swing_direction = -1
                 start_angle = current_angle
                 end_angle = next_angle
-            elif swing_direction == -1: # 如果当前方向为负向
+            elif swing_direction == -1:  # 如果当前方向为负向
                 end_angle = next_angle
             elif swing_direction == 1:  # 如果当前方向为正向
-                if abs(end_angle - start_angle) >= threshold:   # 如果摆动幅度超过阈值
+                if abs(end_angle - start_angle) >= threshold:  # 如果摆动幅度超过阈值
                     swing_count += 1
                 swing_direction = -1
                 start_angle = current_angle
                 end_angle = next_angle
-        else:   # 角度未发生变化
+        else:  # 角度未发生变化
             continue
 
     return {"摆动次数": swing_count}
 
 
+def calculate_time_difference(time1, time2):
+    """
+    计算两个时间的时间差。时间1应早于时间2。
+    Args:
+        time1 (str): 时间1，格式为 'YYYY-MM-DD HH:MM:SS'。
+        time2 (str): 时间2，格式为 'YYYY-MM-DD HH:MM:SS'。
+    Returns:
+        dict: 包含时间差的字典。
+    """
+    time1 = pd.to_datetime(time1)
+    time2 = pd.to_datetime(time2)
+
+    time_difference = time2 - time1
+
+    return {"时间差": int(time_difference.total_seconds() / 60)}
+
+
 if __name__ == "__main__":
-    print(count_swing_with_rule("2024-05-17 00:00:00", "2024-05-20 23:59:59", "右舷", 35, -43))
+    print(
+        count_swing_with_rule(
+            "2024-05-17 00:00:00", "2024-05-20 23:59:59", "右舷", 35, -43
+        )
+    )

@@ -33,6 +33,7 @@ function_map = {
     "calculate_total_rudder_energy": api.calculate_total_rudder_energy,
     "count_swing_with_threshold": api.count_swing_with_threshold,
     "count_swing_with_rule": api.count_swing_with_rule,
+    "calculate_time_difference": api.calculate_time_difference,
 }
 
 
@@ -62,7 +63,7 @@ def choose_table(question):
     return str(response.choices[0].message.content)
 
 
-def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
+def glm4_create(max_attempts, messages, tools=None, model="glm-4-plus"):
     print("发起AI对话")
     client = ZhipuAI(api_key="6cf617672cae4afa9a280657a87beccb.m5ii3yJ1p3E42abg")
     for attempt in range(max_attempts):
@@ -89,10 +90,13 @@ def get_answer_2(question, tools, api_look: bool = True):
                 "role": "system",
                 "content": initial_prompt,
             },
-            {"role": "user", "content": question},
+            {
+                "role": "user",
+                "content": f"现在需要回答这个问题{question}可以使用的工具函数有{filtered_tools}请先结合提供的工具函数深度思考，详细说明如何使用以及解答思路，不需要做出最终的回答。",
+            },
         ]
         # 第一次调用模型
-        response = glm4_create(6, messages, filtered_tools)
+        response = glm4_create(6, messages)
         messages.append(response.choices[0].message.model_dump())
         function_results = []
         # 最大迭代次数
@@ -136,7 +140,7 @@ def get_answer_2(question, tools, api_look: bool = True):
                 messages.append(
                     {
                         "role": "user",
-                        "content": "若已完成回答，请只输出'已完成回答'。否则请继续推理，若有需要则调用函数。",
+                        "content": "现在请使用函数完成回答。若已完成回答，请只输出'已完成回答'。否则请继续推理，若有需要则调用函数。",
                     }
                 )
                 print(f"第{iteration}次调用模型")
@@ -186,7 +190,7 @@ def select_api_based_on_question(question, tools):
     ):
         print("! 问题包含：动作，提供Api：get_device_status_by_time_range")
         api_list_filter.append("get_device_status_by_time_range")
-    if "开机时长" in question:
+    if "开机时长" in question or "开机总时长" in question:
         print("! 问题包含：开机时长，供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
     if (
@@ -236,6 +240,9 @@ def select_api_based_on_question(question, tools):
     if "平均值" in question:
         print("! 问题包含：平均值，提供Api：find_avg_value")
         api_list_filter.append("find_avg_value")
+    if "时间差" in question:
+        print("! 问题包含：时间差，提供Api：calculate_time_difference")
+        api_list_filter.append("calculate_time_difference")
 
     if len(api_list_filter) == 3:
         # 如果问题不匹配上述条件，则根据表名选择 API
@@ -285,11 +292,11 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     enhanced_prompt = enhanced_prompt.replace(
         "运行的平均时间", "运行的平均时间（每天运行时长的平均值）"
     )
-    # if "作业" in enhanced_prompt and "开始" in enhanced_prompt:
-    #     enhanced_prompt = (
-    #         enhanced_prompt
-    #         + "若问题没有特殊说明，则深海作业A的开始以ON_DP为标志，DP动作来自定位设备。"
-    #     )
+    if "作业" in enhanced_prompt and "开始" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt
+            + "若问题没有特殊说明，则深海作业A的开始以ON_DP为标志，DP动作来自定位设备。"
+        )
     if "A架" in enhanced_prompt and "开启" in enhanced_prompt:
         enhanced_prompt = (
             enhanced_prompt
@@ -346,7 +353,19 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
             + "（深海作业分为下放（布放）阶段和回收阶段，一般下放阶段发生在回收阶段之前。）"
         )
     if "报警" in enhanced_prompt:
-        enhanced_prompt = enhanced_prompt + "（符号'↑'表示只有在数据大于报警值时才报警，符号'↓'表示当数据小于报警值时报警。例如，题目说参数为超过160，报警值为730↑，则可能不报警，因为可能是小于730。例如，题目说参数为低于500，报警值为210↓，则可能不报警，因为可能是大于210。）"
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（符号'↑'表示只有在数据大于报警值时才报警，符号'↓'表示当数据小于报警值时报警。例如，题目说参数为超过160，报警值为730↑，则可能不报警，因为可能是小于730。例如，题目说参数为低于500，报警值为210↓，则可能不报警，因为可能是大于210。）"
+        )
+    if "开机时长" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt + "（若问题没有另外说明，开机时长以分钟为单位。）"
+        )
+    if "时间差" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（计算时间差前先说明发生的动作以及要使用的时间，使用工具函数计算时间差时注意输入的两个时间的先后。）"
+        )
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -375,7 +394,7 @@ def get_answer(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 39
+    QUESTION = 31
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]

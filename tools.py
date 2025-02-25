@@ -137,7 +137,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_uptime",
-            "description": "计算指定时间段内的开机时长，并返回三种格式的开机时长。设备名称支持 '折臂吊车'、'A架' 和 'DP'。",
+            "description": "计算某个设备在指定时间段内的开机时长，以分钟为单位。返回值为包括开机次数、总开机时长和开机时长列表的字典。设备名称支持 '折臂吊车'、'A架' 和 'DP'。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -655,6 +655,29 @@ tools_all = [
                         "description": "摆动幅度的阈值。",
                     },
                     "required": ["start_time", "end_time", "side", "threshold"],
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_time_difference",
+            "description": "计算两个时间的时间差，以分钟为单位。时间1应小于时间2。返回值为包含时间差的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "time1": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "时间1，应小于时间2，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "time2": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "时间2，应大于时间1，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "required": ["time1", "time2"],
                 },
             },
         },
