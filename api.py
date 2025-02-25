@@ -633,6 +633,73 @@ def calculate_total_energy_consumption(start_time, end_time):
         ),
     }
 
+def calculate_total_rudder_energy(start_time, end_time):
+    """
+    计算指定时间范围内舵桨的总能耗（单位 kWh）。
+
+    参数：
+        start_time (str): 开始时间，例如 'YYYY-MM-DD HH:MM:SS'，默认为 None（不限制）
+        end_time (str): 结束时间，例如 'YYYY-MM-DD HH:MM:SS'，默认为 None（不限制）
+
+    返回：
+        dict: 舵桨的各部分能耗和总能耗，格式如下：
+        {
+            "一号舵桨A": total_energy_1_A,
+            "一号舵桨B": total_energy_1_B,
+            "二号舵桨A": total_energy_2_A,
+            "二号舵桨B": total_energy_2_B,
+            "总能耗": 总能耗
+        }
+    """
+
+    # 文件路径和功率列名
+    files_and_columns = {
+        "一号舵桨A": ("database_in_use/device_1_2_meter_102.csv", "1-2-6_v"),
+        "一号舵桨B": ("database_in_use/device_1_3_meter_103.csv", "1-3-6_v"),
+        "二号舵桨A": ("database_in_use/device_13_2_meter_1302.csv", "13-2-6_v"),
+        "二号舵桨B": ("database_in_use/device_13_3_meter_1303.csv", "13-3-6_v"),
+    }
+
+    energy_results = {}
+
+    for rudder_name, (file_path, power_column) in files_and_columns.items():
+        try:
+            # 读取数据
+            df = pd.read_csv(file_path)
+
+            # 确保时间列是 datetime 格式
+            df["csvTime"] = pd.to_datetime(df["csvTime"])
+
+            # 筛选时间范围（如果提供）
+            if start_time:
+                start_time_dt = pd.to_datetime(start_time)
+                df = df[df["csvTime"] >= start_time_dt]
+            if end_time:
+                end_time_dt = pd.to_datetime(end_time)
+                df = df[df["csvTime"] < end_time_dt]
+
+            if df.empty:
+                energy_results[rudder_name] = 0.00
+                continue  # 如果数据为空，跳过这个文件
+
+            # 计算时间间隔（分钟 → 小时）
+            df["time_diff_hours"] = 1 / 60  # 1 分钟 = 1/60 小时
+
+            # 计算当前文件的总能耗（kWh）
+            df["Energy_kWh"] = df[power_column] * df["time_diff_hours"]
+            total_energy = df["Energy_kWh"].sum()
+
+            # 记录到字典
+            energy_results[rudder_name] = round(total_energy, 2)
+
+        except FileNotFoundError:
+            print(f"文件未找到: {file_path}")
+            energy_results[rudder_name] = 0.00  # 文件缺失时，能耗记为 0
+
+    # 计算总能耗
+    energy_results["总能耗"] = round(sum(energy_results.values()), 2)
+
+    return energy_results
 
 def get_device_status_by_time_range(start_time, end_time, device_name):
     """
@@ -1167,12 +1234,22 @@ def find_missing_records(table_name: str, start_time, end_time):
     missing_times = [t for t in full_time_range if t not in existing_times]
 
     # 返回字典
+<<<<<<< HEAD
     return {"missing_count": len(missing_times), "missing_rate": len(missing_times) / len(full_time_range)}
 
 
 def count_oscillations(
     start_time, end_time, name: str, angle_range_start, angle_range_end
 ):
+=======
+    return {
+        "missing_count": len(missing_times),
+        "missing_present": len(missing_times) / len(full_time_range)
+    }
+
+
+def count_oscillations(start_time, end_time, name: str, angle_range_start, angle_range_end):
+>>>>>>> origin/subtask-Ver
 
     # 读取 CSV 文件
     df = pd.read_csv(
@@ -1538,8 +1615,12 @@ def calculate_time_difference(time1, time2):
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     print(
         count_swing_with_rule(
             "2024-05-17 00:00:00", "2024-05-20 23:59:59", "右舷", 35, -43
         )
     )
+=======
+    print(find_missing_records("Jiaoche_plc_1", "2024-05-20 00:00:00", "2024-05-25 00:00:00"))
+>>>>>>> origin/subtask-Ver

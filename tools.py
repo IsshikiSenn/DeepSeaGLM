@@ -395,6 +395,10 @@ tools_all = [
                 "properties": {
                     "table_name": {
                         "type": "string",
+<<<<<<< HEAD
+=======
+                        "format": "string",
+>>>>>>> origin/subtask-Ver
                         "enum": ["Ajia_plc_1.csv", "Jiaoche_plc_1.csv","Port1_ksbg_1.csv"],
                     },
                     "start_time": {
@@ -416,7 +420,11 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "count_oscillations",
+<<<<<<< HEAD
             "description": "在指定时间范围内查询A架的摆动次数。返回值为字典，包含A架摆动次数。如果是超过角度X，则摆动角度范围取(X, 999)。",
+=======
+            "description": "在指定时间范围内查询A架的摆动次数。返回值为字典，包含A架摆动次数。如果是超过角度X，则元组取(X, 999)",
+>>>>>>> origin/subtask-Ver
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -437,6 +445,7 @@ tools_all = [
                     },
                     "angle_range_start": {
                         "type": "float",
+<<<<<<< HEAD
                         "description": "摆动角度范围的起始值。",
                     },
                     "angle_range_end": {
@@ -681,5 +690,17 @@ tools_all = [
                 },
             },
         },
+=======
+                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)，这里是第一个值。",
+                    },
+                    "angle_range_end": {
+                        "type": "float",
+                        "description": "摆动角度范围的元组，第一个值应小于第二个值，例如 (0, 10)，这里是第二个值。",
+                    }
+                },
+                "required": ["start_time", "end_time", "name", "angle_range_start", "angle_range_end"],
+            }
+        }
+>>>>>>> origin/subtask-Ver
     },
 ]
