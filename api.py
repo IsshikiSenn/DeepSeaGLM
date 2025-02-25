@@ -1234,14 +1234,12 @@ def find_missing_records(table_name: str, start_time, end_time):
     missing_times = [t for t in full_time_range if t not in existing_times]
 
     # 返回字典
-<<<<<<< HEAD
     return {"missing_count": len(missing_times), "missing_rate": len(missing_times) / len(full_time_range)}
 
 
 def count_oscillations(
     start_time, end_time, name: str, angle_range_start, angle_range_end
 ):
-=======
     return {
         "missing_count": len(missing_times),
         "missing_present": len(missing_times) / len(full_time_range)
@@ -1249,7 +1247,6 @@ def count_oscillations(
 
 
 def count_oscillations(start_time, end_time, name: str, angle_range_start, angle_range_end):
->>>>>>> origin/subtask-Ver
 
     # 读取 CSV 文件
     df = pd.read_csv(
@@ -1615,12 +1612,10 @@ def calculate_time_difference(time1, time2):
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     print(
         count_swing_with_rule(
             "2024-05-17 00:00:00", "2024-05-20 23:59:59", "右舷", 35, -43
         )
     )
-=======
+
     print(find_missing_records("Jiaoche_plc_1", "2024-05-20 00:00:00", "2024-05-25 00:00:00"))
->>>>>>> origin/subtask-Ver

@@ -1,12 +1,4 @@
 import json
-<<<<<<< HEAD
-=======
-import os
-import traceback
-import re
-
-import json
->>>>>>> origin/subtask-Ver
 
 from zhipuai import ZhipuAI
 import traceback
@@ -16,7 +8,6 @@ import Sample
 import api
 import tools
 from initial_prompt import initial_prompt
-import Sample
 
 function_map = {
     "calculate_uptime": api.calculate_uptime,
@@ -94,56 +85,8 @@ def glm4_create(max_attempts, messages, tools=None, model="glm-4-plus"):
     return response
 
 
-<<<<<<< HEAD
 def get_answer_2(question, tools, api_look: bool = True):
-=======
-function_map = {
-    "calculate_uptime": api.calculate_uptime,
-    "compute_operational_duration": api.compute_operational_duration,
-    "get_table_data": api.get_table_data,
-    "load_and_filter_data": api.load_and_filter_data,
-    "calculate_total_energy": api.calculate_total_energy,
-    "calculate_total_deck_machinery_energy": api.calculate_total_deck_machinery_energy,
-    "query_device_parameter": api.query_device_parameter,
-    "get_device_status_by_time_range": api.get_device_status_by_time_range,
-    "calculate_total_energy_consumption": api.calculate_total_energy_consumption,
-    "calculate_generator_energy_consumption": api.calculate_generator_energy_consumption,
-    "check_ajia_angle": api.check_ajia_angle,
-    "calculate_fuel_consumption": api.calculate_fuel_consumption,
-    "calculate_percent": api.calculate_percent,
-    "calculate_theoretical_energy_output": api.calculate_theoretical_energy_output,
-    "get_field_dict": api.get_field_dict,
-    "sum_list": api.sum_list,
-    "get_work_time": api.get_work_time,
-    "find_missing_records": api.find_missing_records,
-    "count_oscillations": api.count_oscillations,
-}
-
-
-def get_answer_3(question, tools, api_look: bool = True):
->>>>>>> origin/subtask-Ver
     filtered_tools = tools
-
-    print(f"🔹 任务拆解前的问题：{question}")
-
-    # **任务拆解（CoT）**
-    task_decomposition_prompt = f"""
-            你是一个智能任务拆解助手。请逐步思考，拆解成多个可执行的子任务，并确定需要调用的 API。
-            先可以用使用的工具时{filtered_tools}。
-            只需要任务分解的JSON，不需要其他内容。
-            返回 JSON 格式，格式如下：
-            {{
-                "subtasks": [
-                    {{"step": 1, "task": "查询设备状态", "api": "get_device_status_by_time_range"}},
-                    {{"step": 2, "task": "计算能耗", "api": "calculate_total_energy"}}
-                ]
-            }}
-            问题：{question}
-            """
-    print()
-    task_response = glm4_create(3, [{"role": "user", "content": task_decomposition_prompt}], [])
-    print("! 任务拆解结果:", task_response.choices[0].message.content)
-
     try:
         messages = [
             {
@@ -155,11 +98,9 @@ def get_answer_3(question, tools, api_look: bool = True):
                 "content": f"现在需要回答这个问题{question}可以使用的工具函数有{filtered_tools}请先结合提供的工具函数深度思考，详细说明如何使用以及解答思路，不需要做出最终的回答。",
             },
         ]
-
         # 第一次调用模型
         response = glm4_create(6, messages)
         messages.append(response.choices[0].message.model_dump())
-
         function_results = []
         # 最大迭代次数
         iteration = 1
@@ -221,11 +162,7 @@ def get_answer_3(question, tools, api_look: bool = True):
         print(f"Error generating answer for question: {question}, {e}")
         return None, None
 
-<<<<<<< HEAD
 def get_answer_in_subtask_way(question, tools, temple, api_look: bool = True):
-=======
-def get_answer_2(question, tools, temple, api_look: bool = True):
->>>>>>> origin/subtask-Ver
     filtered_tools = tools
     try:
         messages = [
@@ -238,7 +175,6 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
 
         # **任务拆解（CoT）**
         task_decomposition_prompt = f"""
-<<<<<<< HEAD
                         你是一个智能任务拆解助手。请逐步思考，拆解成多个可执行的子任务，并确定需要调用的 API。
                         你只能使用这些工具，严格看下工具的输入与输出{[{tool['function']['name']: tool['function']['description']} for tool in filtered_tools]}。
                         这是任务分解的参考是{[{"question": one_temple["question"], "subtasks": one_temple["subtasks"]} for one_temple in temple]}
@@ -254,23 +190,6 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
                         }}
                         问题：{question}
                         """
-=======
-                    你是一个智能任务拆解助手。请逐步思考，拆解成多个可执行的子任务，并确定需要调用的 API。
-                    你只能使用这些工具，严格看下工具的输入与输出{[{tool['function']['name']: tool['function']['description']} for tool in filtered_tools]}。
-                    这是任务分解的参考是{[{"question": one_temple["question"], "subtasks": one_temple["subtasks"]} for one_temple in temple]}
-                    如果需要自我思考处理，就在api里填入"self_thought"。
-                    如果需要输出，则api里填入"out_put"。
-                    只需要任务分解的JSON，尽可能细致，JSON只需要step，task和api，不需要JSON的格式化标记。
-                    返回 JSON的格式，格式如下：
-                    {{
-                        "subtasks": [
-                            {{"step": 1, "task": "查询设备状态", "api": "get_device_status_by_time_range"}},
-                            {{"step": 2, "task": "计算能耗", "api": "calculate_total_energy"}}
-                        ]
-                    }}
-                    问题：{question}
-                    """
->>>>>>> origin/subtask-Ver
         task_response = glm4_create(3, [{"role": "user", "content": task_decomposition_prompt}], [])
 
         def clean_json_text(text):
@@ -279,18 +198,10 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
             text = re.sub(r"```$", "", text)  # 去掉结尾的 ```
             return text.strip()  # 额外去掉前后空格
 
-<<<<<<< HEAD
         clear_text = clean_json_text(task_response.choices[0].message.content)
         print("! 任务拆解结果:", clear_text)
 
         self_thought_memory = {"steps": []}  # 记录所有 step 的输入输出
-=======
-
-        clear_text = clean_json_text(task_response.choices[0].message.content)
-        print("! 任务拆解结果:", clear_text)
-
-        self_thought_memory = {"steps" : []}  # 记录所有 step 的输入输出
->>>>>>> origin/subtask-Ver
 
         # 解析任务拆解结果
         task_decomposition = json.loads(clear_text)
@@ -305,7 +216,6 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
 
             # **让 LLM 生成子任务的具体执行指令**
             subtask_prompt = f"""
-<<<<<<< HEAD
                     你需要执行如下子任务：
                     {subtask["task"]}
                     你需要调用的工具是:{subtask["api"]}
@@ -329,31 +239,6 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
                         - 你过去的任务历史（输入 & 输出）如下：
                         {json.dumps(self_thought_memory, ensure_ascii=False, indent=2, default=str)}。
                     """
-=======
-                你需要执行如下子任务：
-                {subtask["task"]}
-                你需要调用的工具是:{subtask["api"]}
-                你只需要提供参数就行，不要思考别的方法。
-                请结合 CoT 方式思考，逐步拆解执行，并调用合适的工具。
-            """
-
-            if subtask['api'] == "self_thought":
-                subtask_prompt = f"""
-                    你需要执行如下子任务：
-                    {subtask["task"]}
-                    - 你过去的任务历史（输入 & 输出）如下：
-                    {json.dumps(self_thought_memory, ensure_ascii=False, indent=2, default=str)}
-                    你需要结合之前的输入输出来解决这个问题，回答最好主谓宾一句话一气呵成。
-                """
-            if subtask['api'] == "out_put":
-                print("final")
-                subtask_prompt = f"""
-                    你要解决的问题是:{question}
-                    你只需要通过历史记录告诉我答案，不需要调用任何工具。
-                    - 你过去的任务历史（输入 & 输出）如下：
-                    {json.dumps(self_thought_memory, ensure_ascii=False, indent=2, default=str)}。
-                """
->>>>>>> origin/subtask-Ver
             response = glm4_create(6, [{"role": "user", "content": subtask_prompt}], filtered_tools)
             messages.append(response.choices[0].message.model_dump())
 
@@ -385,12 +270,8 @@ def get_answer_2(question, tools, temple, api_look: bool = True):
                 })
 
         # **最终总结回答**
-<<<<<<< HEAD
         messages.append(
             {"role": "user", "content": "请总结所有子任务的结果，并生成最终答案。一句话尽可能详细得回答问题，不用给我过程。如果题目有输出要求，严格执行，如有单位，记得单位。"})
-=======
-        messages.append({"role": "user", "content": "请总结所有子任务的结果，并生成最终答案。一句话尽可能详细得回答问题，不用给我过程。如果题目有输出要求，严格执行，如有单位，记得单位。"})
->>>>>>> origin/subtask-Ver
         final_response = glm4_create(6, messages, filtered_tools)
         return final_response.choices[0].message.content, str(function_results)
     except Exception as e:
@@ -403,22 +284,12 @@ def select_api_based_on_question(question, tools):
 
     temple = []
 
-<<<<<<< HEAD
     api_list_filter = ["calculate_percent", "query_device_parameter", "sum_two"]
     # 根据问题内容选择相应的 API
     if "能耗" in question or "做功" in question:
         print("! 问题包含：能耗")
         if "推进" in question or "侧推" in question:
             print("! 问题包含：推进，提供Api：calculate_total_energy_consumption")
-=======
-    api_list_filter = ["calculate_percent", "query_device_parameter", "sum_list"]
-    # 根据问题内容选择相应的 API
-    if "能耗" in question:
-        print("! 问题包含：能耗，提供Api：calculate_total_energy")
-        api_list_filter.append("calculate_total_energy")
-        if "推进" in question or "侧推" in question:
-            print("! 问题包含：推进系统，提供Api：calculate_total_energy_consumption")
->>>>>>> origin/subtask-Ver
             api_list_filter.append("calculate_total_energy_consumption")
         if "甲板机械" in question or "折臂吊车" in question or "A架" in question:
             print(
@@ -476,14 +347,8 @@ def select_api_based_on_question(question, tools):
         api_list_filter.append("get_work_time")
     if "数据" in question and "缺失" in question:
         print("! 问题包含：数据、缺失，提供Api：find_missing_records")
-        temple.append(Sample.task_temple["数据缺失"])
         api_list_filter.append("find_missing_records")
-<<<<<<< HEAD
         temple.append(Sample.task_temple["数据缺失"])
-=======
-        if "缺失比例" in question:
-            api_list_filter.remove("calculate_percent")
->>>>>>> origin/subtask-Ver
     if "摆动" in question and "次数" in question:
         print(
             "! 问题包含：摆动、次数，提供Api：count_swing_with_rule、count_swing_with_threshold"
@@ -632,14 +497,11 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
 
 def run_conversation_xietong(question):
     question = enhanced(question)
-    content_p_1, filtered_tool, temple = select_api_based_on_question(question, tools.tools_all)
+    content_p_1, filtered_tool = select_api_based_on_question(question, tools.tools_all)
     print("content_p_1:", content_p_1)
     print("filtered_tool:", [tool["function"]["name"] for tool in filtered_tool])
     answer, select_result = get_answer_2(
-        question=content_p_1,
-        tools=filtered_tool,
-        temple=temple,
-        api_look=False
+        question=content_p_1, tools=filtered_tool, api_look=False
     )
     return answer
 
@@ -648,7 +510,6 @@ def get_answer_normal_way(question):
     try:
         print(f"! 尝试解决问题：{question}")
         last_answer = run_conversation_xietong(question)
-<<<<<<< HEAD
         return last_answer
     except Exception as e:
         print(f"Error occurred while executing get_answer: {e}")
@@ -672,26 +533,17 @@ def get_answer_subtask_way(question):
             return answer
 
         last_answer = run_conversation_xietong(question)
-=======
-        # last_answer = last_answer.replace(" ", "")
->>>>>>> origin/subtask-Ver
         return last_answer
     except Exception as e:
-        traceback.print_exc()
         print(f"Error occurred while executing get_answer: {e}")
         return "An error occurred while retrieving the answer."
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     # 问题编号
     QUESTION = 100
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
-=======
-    QUESTION = 100 # 问题编号
-    with open("result.jsonl", "r", encoding="utf-8") as file:
->>>>>>> origin/subtask-Ver
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
     answer = get_answer_subtask_way(question)
