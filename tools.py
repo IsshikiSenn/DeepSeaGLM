@@ -389,13 +389,13 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "find_missing_records",
-            "description": "在指定时间范围内查找缺失的记录。返回值为字典，包含缺失记录的数量。",
+            "description": "在指定时间范围内查找缺失的记录。返回值为字典，包含缺失记录的数量与缺失比例。如果查询一个时间段，建议一天一天算。",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "table_name": {
                         "type": "string",
-                        "description": "数据表名，例如 'Ajia_plc_1.csv'。",
+                        "enum": ["Ajia_plc_1.csv", "Jiaoche_plc_1.csv","Port1_ksbg_1.csv"],
                     },
                     "start_time": {
                         "type": "string",

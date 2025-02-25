@@ -1167,7 +1167,7 @@ def find_missing_records(table_name: str, start_time, end_time):
     missing_times = [t for t in full_time_range if t not in existing_times]
 
     # 返回字典
-    return {"missing_count": len(missing_times)}
+    return {"missing_count": len(missing_times), "missing_rate": len(missing_times) / len(full_time_range)}
 
 
 def count_oscillations(
