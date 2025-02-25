@@ -316,7 +316,7 @@ def calculate_total_energy(start_time, end_time, device_name="折臂吊车"):
 
 def calculate_total_deck_machinery_energy(start_time, end_time):
     """
-    计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。
+    计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。其中A架代表一号门架和二号门架。
     Params:
         start_time (str): 指定时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 指定时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
@@ -1003,6 +1003,18 @@ def calculate_fuel_consumption(start_time, end_time):
     }
 
 
+def calculate_fuel_consumption_weight(volume, density):
+    """
+    根据燃油消耗量的体积，计算燃油消耗量的重量，以kg为单位。
+    Args:
+        volume (float): 燃油体积（L）。
+        density (float): 燃油密度（kg/L）。
+    Returns:
+        dict: 包含燃油质量（kg）的字典。
+    """
+    return {"燃油消耗量": volume * density}
+
+
 def calculate_percent(a, b):
     """
     计算a占b的百分比。
@@ -1045,15 +1057,16 @@ def get_field_dict():
     """
     return field_dict
 
-def sum_list(ls):
+def sum_two(a: float,b: float):
     """
-    计算列表元素之和。
+    计算两个元素之和。
     Args:
-        ls (list): 要计算的列表。
+        a(float): 第一个元素。
+        b(float): 第二个元素。
     Returns:
-        float: 列表元素之和。
+        float: 两个元素之和。
     """
-    return round(sum(ls), 2)
+    return round(a+b, 2)
 
 def get_work_time(start_time, end_time):
     """
@@ -1167,13 +1180,149 @@ def count_oscillations(start_time, end_time, name: str, angle_range_start, angle
     return {"count": oscillation_count}
 
 
-# def calculate_before_time_percent(actions, status, time):
-#     num = 0
-#     selected = 0
-#     for action in actions:
-#         if action["status"] == status:
-#             num += 1
-#             if action["time"]
+def find_min_value(start_time, end_time, table_name, column_name):
+    """
+    查找指定时间范围内，指定数据表中指定列的最小值。
+    Args:
+        start_time (str): 要查询的时间范围的开始时间。
+        end_time (str): 要查询的时间范围的结束时间。
+        table_name (str): 数据表名。
+        column_name (str): 列名。
+    Returns:
+        dict: 包含最小值和对应时间的字典。
+    """
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 获取最小值
+    min_value = df[column_name].min()
+
+    # 获取最小值对应的时间
+    min_time = df.loc[df[column_name].idxmin(), 'csvTime']
+
+    return {"min_value": min_value, "min_time": min_time}
+
+
+def find_max_value(start_time, end_time, table_name, column_name):
+    """
+    查找指定时间范围内，指定数据表中指定列的最大值。
+    Args:
+        start_time (str): 要查询的时间范围的开始时间。
+        end_time (str): 要查询的时间范围的结束时间。
+        table_name (str): 数据表名。
+        column_name (str): 列名。
+    Returns:
+        dict: 包含最大值和对应时间的字典。
+    """
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 获取最小值
+    max_value = df[column_name].max()
+
+    # 获取最小值对应的时间
+    max_time = df.loc[df[column_name].idxmax(), 'csvTime']
+
+    return {"min_value": max_value, "min_time": max_time}
+
+
+def find_avg_value(start_time, end_time, table_name, column_name):
+    """
+    查找指定时间范围内，指定数据表中指定列的平均值。
+    Args:
+        start_time (str): 要查询的时间范围的开始时间。
+        end_time (str): 要查询的时间范围的结束时间。
+        table_name (str): 数据表名。
+        column_name (str): 列名。
+    Returns:
+        dict: 包含平均值的字典。
+    """
+    # 读取 CSV 文件
+    df = pd.read_csv("./database_in_use/" + table_name, parse_dates=['csvTime'])
+
+    start_time = pd.to_datetime(start_time)
+    end_time = pd.to_datetime(end_time)
+
+    # 过滤时间范围内的数据
+    df = df[(df['csvTime'] >= start_time) & (df['csvTime'] <= end_time)]
+
+    # 获取平均值
+    avg_value = df[column_name].mean()
+
+    return {"avg_value": avg_value}
+
+
+def calculate_total_rudder_energy(start_time, end_time):
+    """
+    计算指定时间范围内舵桨的能耗（kWh），包括一号船舵A、一号船舵B、二号船舵A、二号船舵B和总能耗。
+    Params:
+        start_time (str): 要计算能耗的开始时间，例如 'YYYY-MM-DD HH:MM:SS'。
+        end_time (str): 要计算能耗的结束时间，例如 'YYYY-MM-DD HH:MM:SS'。
+
+    Returns:
+        dict: 包括一号船舵A、一号船舵B、二号船舵A、二号船舵B和总体的能耗（kWh）的字典。
+    """
+
+    # 文件路径和功率列名
+    files_and_columns = {
+        "一号舵桨A": ("database_in_use/device_1_2_meter_102.csv", "1-2-6_v"),
+        "一号舵桨B": ("database_in_use/device_1_3_meter_103.csv", "1-3-6_v"),
+        "二号舵桨A": ("database_in_use/device_13_2_meter_1302.csv", "13-2-6_v"),
+        "二号舵桨B": ("database_in_use/device_13_3_meter_1303.csv", "13-3-6_v"),
+    }
+
+    energy_results = {}
+
+    for rudder_name, (file_path, power_column) in files_and_columns.items():
+        try:
+            # 读取数据
+            df = pd.read_csv(file_path)
+
+            # 确保时间列是 datetime 格式
+            df["csvTime"] = pd.to_datetime(df["csvTime"])
+
+            # 筛选时间范围（如果提供）
+            if start_time:
+                start_time_dt = pd.to_datetime(start_time)
+                df = df[df["csvTime"] >= start_time_dt]
+            if end_time:
+                end_time_dt = pd.to_datetime(end_time)
+                df = df[df["csvTime"] < end_time_dt]
+
+            if df.empty:
+                energy_results[rudder_name] = 0.00
+                continue  # 如果数据为空，跳过这个文件
+
+            # 计算时间间隔（分钟 → 小时）
+            df["time_diff_hours"] = 1 / 60  # 1 分钟 = 1/60 小时
+
+            # 计算当前文件的总能耗（kWh）
+            df["Energy_kWh"] = df[power_column] * df["time_diff_hours"]
+            total_energy = df["Energy_kWh"].sum()
+
+            # 记录到字典
+            energy_results[rudder_name] = round(total_energy, 2)
+
+        except FileNotFoundError:
+            print(f"文件未找到: {file_path}")
+            energy_results[rudder_name] = 0.00  # 文件缺失时，能耗记为 0
+
+    # 计算总能耗
+    energy_results["总能耗"] = round(sum(energy_results.values()), 2)
+
+    return energy_results
 
 if __name__ == "__main__":
     print(get_work_time("2024-08-23 00:00:00", "2024-08-23 23:59:59"))

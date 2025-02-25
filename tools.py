@@ -69,7 +69,7 @@ tools_all = [
         "type": "function",
         "function": {
             "name": "calculate_total_deck_machinery_energy",
-            "description": "计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。返回值为包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。",
+            "description": "计算指定时间范围内甲板机械的能耗，包括折臂吊车、一号门架、二号门架、绞车，以及总能耗。其中A架代表一号门架和二号门架。返回值为包含甲板机械四个部分（折臂吊车、一号门架、二号门架、绞车）的能耗和总能耗（kWh）的字典，如果数据为空则返回 None。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -307,17 +307,21 @@ tools_all = [
     {
         "type": "function",
         "function": {
-            "name": "sum_list",
-            "description": "计算列表元素之和。",
+            "name": "sum_two",
+            "description": "计算两个元素之和。返回值为两个元素之和。当需要计算多个元素之和时，可以多次调用此函数。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "ls": {
-                        "type": "list",
-                        "description": "要计算的列表。",
+                    "a": {
+                        "type": "float",
+                        "description": "第一个元素。",
+                    },
+                    "b": {
+                        "type": "float",
+                        "description": "第二个元素。",
                     },
                 },
-                "required": ["ls"],
+                "required": ["a", "b"],
             },
         },
     },
@@ -405,8 +409,8 @@ tools_all = [
                     },
                 },
                 "required": ["start_time", "end_time"],
-            }
-        }
+            },
+        },
     },
     {
         "type": "function",
@@ -438,10 +442,153 @@ tools_all = [
                     "angle_range_end": {
                         "type": "float",
                         "description": "摆动角度范围的结束值。",
-                    }
+                    },
                 },
-                "required": ["start_time", "end_time", "name", "angle_range_start", "angle_range_end"],
-            }
-        }
+                "required": [
+                    "start_time",
+                    "end_time",
+                    "name",
+                    "angle_range_start",
+                    "angle_range_end",
+                ],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_min_value",
+            "description": "查找指定时间范围内，指定数据表中指定列的最小值。返回值为包含最小值和对应时间的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "要查询最小值的数据表名，需要加上'.csv'，例如 'Ajia_plc_1.csv'。",
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "要查询最小值的列名。",
+                    },
+                },
+                "required": ["start_time", "end_time", "table_name", "column_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_max_value",
+            "description": "查找指定时间范围内，指定数据表中指定列的最大值。返回值为包含最大值和对应时间的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "要查询最大值的数据表名，需要加上'.csv'，例如 'Ajia_plc_1.csv'。",
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "要查询最大值的列名。",
+                    },
+                },
+                "required": ["start_time", "end_time", "table_name", "column_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_avg_value",
+            "description": "查找指定时间范围内，指定数据表中指定列的平均值。返回值为包含平均值的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要查询的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "table_name": {
+                        "type": "string",
+                        "description": "要查询平均值的数据表名，需要加上'.csv'，例如 'Ajia_plc_1.csv'。",
+                    },
+                    "column_name": {
+                        "type": "string",
+                        "description": "要查询平均值的列名。",
+                    },
+                },
+                "required": ["start_time", "end_time", "table_name", "column_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_fuel_consumption_weight",
+            "description": " 根据燃油消耗量的体积，计算燃油消耗量的重量，以kg为单位。返回值为包含燃油质量（kg）的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "volume": {
+                        "type": "float",
+                        "description": "燃油体积（L）。",
+                    },
+                    "density": {
+                        "type": "float",
+                        "description": "燃油密度（kg/L）。",
+                    },
+                },
+                "required": ["volume", "density"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate_total_rudder_energy",
+            "description": "计算指定时间范围内舵桨的能耗（kWh）。返回值为包括一号船舵A、一号船舵B、二号船舵A、二号船舵B和总体的能耗（kWh）的字典。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算船舵能耗的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "要计算船舵能耗的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。",
+                    },
+                    "required": ["start_time", "end_time"],
+                },
+            },
+        },
     },
 ]

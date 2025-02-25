@@ -1,5 +1,4 @@
 import json
-import os
 
 from zhipuai import ZhipuAI
 
@@ -7,14 +6,32 @@ import api
 import tools
 from initial_prompt import initial_prompt
 
-folders = ["database_in_use", "data"]
-if any(not os.path.exists(folder) for folder in folders):
-    for folder in folders:
-        os.makedirs(folder, exist_ok=True)
-    import data_process  # for data process using
-else:
-    print("所有文件夹均已存在。不再重新预处理数据。")
-    print("需要预处理数据，请删除文件夹后重新运行。")
+function_map = {
+    "calculate_uptime": api.calculate_uptime,
+    "compute_operational_duration": api.compute_operational_duration,
+    "get_table_data": api.get_table_data,
+    "load_and_filter_data": api.load_and_filter_data,
+    "calculate_total_energy": api.calculate_total_energy,
+    "calculate_total_deck_machinery_energy": api.calculate_total_deck_machinery_energy,
+    "query_device_parameter": api.query_device_parameter,
+    "get_device_status_by_time_range": api.get_device_status_by_time_range,
+    "calculate_total_energy_consumption": api.calculate_total_energy_consumption,
+    "calculate_generator_energy_consumption": api.calculate_generator_energy_consumption,
+    "check_ajia_angle": api.check_ajia_angle,
+    "calculate_fuel_consumption": api.calculate_fuel_consumption,
+    "calculate_fuel_consumption_weight": api.calculate_fuel_consumption_weight,
+    "calculate_percent": api.calculate_percent,
+    "calculate_theoretical_energy_output": api.calculate_theoretical_energy_output,
+    "get_field_dict": api.get_field_dict,
+    "sum_two": api.sum_two,
+    "get_work_time": api.get_work_time,
+    "find_missing_records": api.find_missing_records,
+    "count_oscillations": api.count_oscillations,
+    "find_min_value": api.find_min_value,
+    "find_max_value": api.find_max_value,
+    "find_avg_value": api.find_avg_value,
+    "calculate_total_rudder_energy": api.calculate_total_rudder_energy,
+}
 
 
 def create_chat_completion(messages, model="glm-4-plus"):
@@ -32,8 +49,8 @@ def choose_table(question):
     with open("dict.json", "r", encoding="utf-8") as file:
         context_text = str(json.load(file))
     prompt = f"""我有如下数据表：<{context_text}>
-    现在基于数据表回答问题：{question}。
-    分析需要哪些数据表。
+    现在需要回答问题：{question}。
+    请结合问题描述需要查询哪些数据表。
     仅返回需要的数据表名，无需展示分析过程。
     若问题中提到A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回，则使用Ajia_plc_1这个数据表。
     若问题中提到折臂吊车及小艇动作,包括折臂吊车关机、折臂吊车开机、小艇检查完毕、小艇入水、小艇落座，则使用device_13_11_meter_1311这个数据表。
@@ -55,37 +72,11 @@ def glm4_create(max_attempts, messages, tools, model="glm-4-plus"):
         print("! 尝试次数：", attempt)
         if response.choices[0].message.content:
             print("! AI回复:", response.choices[0].message.content)
-        if (
-            response.choices
-            and response.choices[0].message
-        ):
+        if response.choices and response.choices[0].message:
             return response
         else:
             continue
     return response
-
-
-function_map = {
-    "calculate_uptime": api.calculate_uptime,
-    "compute_operational_duration": api.compute_operational_duration,
-    "get_table_data": api.get_table_data,
-    "load_and_filter_data": api.load_and_filter_data,
-    "calculate_total_energy": api.calculate_total_energy,
-    "calculate_total_deck_machinery_energy": api.calculate_total_deck_machinery_energy,
-    "query_device_parameter": api.query_device_parameter,
-    "get_device_status_by_time_range": api.get_device_status_by_time_range,
-    "calculate_total_energy_consumption": api.calculate_total_energy_consumption,
-    "calculate_generator_energy_consumption": api.calculate_generator_energy_consumption,
-    "check_ajia_angle": api.check_ajia_angle,
-    "calculate_fuel_consumption": api.calculate_fuel_consumption,
-    "calculate_percent": api.calculate_percent,
-    "calculate_theoretical_energy_output": api.calculate_theoretical_energy_output,
-    "get_field_dict": api.get_field_dict,
-    "sum_list": api.sum_list,
-    "get_work_time": api.get_work_time,
-    "find_missing_records": api.find_missing_records,
-    "count_oscillations": api.count_oscillations,
-}
 
 
 def get_answer_2(question, tools, api_look: bool = True):
@@ -106,7 +97,10 @@ def get_answer_2(question, tools, api_look: bool = True):
         iteration = 1
         while True:
             iteration += 1
-            if response.choices[0].message.content and "已完成回答" in response.choices[0].message.content:
+            if (
+                response.choices[0].message.content
+                and "已完成回答" in response.choices[0].message.content
+            ):
                 break
 
             if response.choices[0].finish_reason == "tool_calls":
@@ -161,15 +155,14 @@ def get_answer_2(question, tools, api_look: bool = True):
 
 
 def select_api_based_on_question(question, tools):
-    api_list_filter = ["calculate_percent", "query_device_parameter", "sum_list"]
+    api_list_filter = ["calculate_percent", "query_device_parameter", "sum_two"]
     # 根据问题内容选择相应的 API
-    if "能耗" in question:
-        print("! 问题包含：能耗，提供Api：calculate_total_energy")
-        api_list_filter.append("calculate_total_energy")
-        if "推进系统" in question or "侧推" in question:
-            print("! 问题包含：推进系统，提供Api：calculate_total_energy_consumption")
+    if "能耗" in question or "做功" in question:
+        print("! 问题包含：能耗")
+        if "推进" in question or "侧推" in question:
+            print("! 问题包含：推进，提供Api：calculate_total_energy_consumption")
             api_list_filter.append("calculate_total_energy_consumption")
-        if "甲板机械" in question or "折臂吊车" in question:
+        if "甲板机械" in question or "折臂吊车" in question or "A架" in question:
             print(
                 "! 问题包含：甲板机械设备，提供Api：calculate_total_deck_machinery_energy"
             )
@@ -177,6 +170,9 @@ def select_api_based_on_question(question, tools):
         if "发电机" in question:
             print("! 问题包含：发电机，提供Api：calculate_generator_energy_consumption")
             api_list_filter.append("calculate_generator_energy_consumption")
+        if "舵桨" in question:
+            print("! 问题包含：舵桨，提供Api：calculate_total_rudder_energy")
+            api_list_filter.append("calculate_total_rudder_energy")
     if (
         "动作" in question
         or "DP" in question
@@ -191,15 +187,20 @@ def select_api_based_on_question(question, tools):
     if "开机时长" in question:
         print("! 问题包含：开机时长，供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
-    if ("运行时长" in question or "运行时间" in question) and "实际运行时长" not in question:
+    if (
+        "运行时长" in question or "运行时间" in question
+    ) and "实际运行时长" not in question:
         print("! 问题包含：运行时长，不包含：实际运行时长，提供Api：calculate_uptime")
         api_list_filter.append("calculate_uptime")
     if "A架" in question and "异常" in question:
         print("! 问题包含：A架、异常，提供Api：check_ajia_angle")
         api_list_filter.append("check_ajia_angle")
     if "燃油消耗量" in question:
-        print("! 问题包含：燃油消耗量，提供Api：calculate_fuel_consumption")
+        print(
+            "! 问题包含：燃油消耗量，提供Api：calculate_fuel_consumption, calculate_fuel_consumption_weight"
+        )
         api_list_filter.append("calculate_fuel_consumption")
+        api_list_filter.append("calculate_fuel_consumption_weight")
     if "发电量" in question:
         print("! 问题包含：发电量，提供Api：calculate_generator_energy_consumption")
         api_list_filter.append("calculate_generator_energy_consumption")
@@ -221,6 +222,15 @@ def select_api_based_on_question(question, tools):
     if "摆动" in question and "次数" in question:
         print("! 问题包含：摆动、次数，提供Api：count_oscillations")
         api_list_filter.append("count_oscillations")
+    if "最小值" in question:
+        print("! 问题包含：最小值，提供Api：find_min_value")
+        api_list_filter.append("find_min_value")
+    if "最大值" in question:
+        print("! 问题包含：最大值，提供Api：find_max_value")
+        api_list_filter.append("find_max_value")
+    if "平均值" in question:
+        print("! 问题包含：平均值，提供Api：find_avg_value")
+        api_list_filter.append("find_avg_value")
 
     if len(api_list_filter) == 3:
         # 如果问题不匹配上述条件，则根据表名选择 API
@@ -270,11 +280,11 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     enhanced_prompt = enhanced_prompt.replace(
         "运行的平均时间", "运行的平均时间（每天运行时长的平均值）"
     )
-    if "作业" in enhanced_prompt and "开始" in enhanced_prompt:
-        enhanced_prompt = (
-            enhanced_prompt
-            + "若问题没有特殊说明，则深海作业A的开始以ON_DP为标志，DP动作来自定位设备。"
-        )
+    # if "作业" in enhanced_prompt and "开始" in enhanced_prompt:
+    #     enhanced_prompt = (
+    #         enhanced_prompt
+    #         + "若问题没有特殊说明，则深海作业A的开始以ON_DP为标志，DP动作来自定位设备。"
+    #     )
     if "A架" in enhanced_prompt and "开启" in enhanced_prompt:
         enhanced_prompt = (
             enhanced_prompt
@@ -291,7 +301,8 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         )
     if "作业能耗" in enhanced_prompt:
         enhanced_prompt = (
-            enhanced_prompt + "（作业能耗是指深海作业A中所有发电机的能耗，应先用get_work_time列出所有作业的时间范围，再用calculate_generator_energy_consumption计算每个作业时间范围的发电机能耗，最后用sum_list计算总和。）"
+            enhanced_prompt
+            + "（作业能耗是指深海作业A中所有发电机的能耗，应先用get_work_time列出所有作业的时间范围，再用calculate_generator_energy_consumption计算每个作业时间范围的发电机能耗，最后用sum_two计算总和。）"
         )
     if "发电效率" in enhanced_prompt:
         enhanced_prompt = (
@@ -302,11 +313,33 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
     if "实际运行时长" in enhanced_prompt and "效率" in enhanced_prompt:
         enhanced_prompt = enhanced_prompt + "（效率是指实际运行时长和开机时长的比值。）"
     if "DP过程" in enhanced_prompt:
-        enhanced_prompt = (enhanced_prompt+ "（DP过程是指从ON_DP到OFF_DP的过程，应先使用get_device_status_by_time_range查询所有ON_DP和OFF_DP的时间，再计算所有DP过程的能耗，最后使用sum_list函数取总和。）")
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（DP过程是指从ON_DP到OFF_DP的过程，应先使用get_device_status_by_time_range查询所有ON_DP和OFF_DP的时间，再计算所有DP过程的能耗，最后使用sum_two函数取总和。）"
+        )
     if "小艇入水到小艇落座" in enhanced_prompt:
-        enhanced_prompt = (enhanced_prompt+ "（小艇入水到小艇落座是指小艇入水动作发生到小艇落座动作发生的整个时间范围，使用函数计算这段时间内的能耗时应该传入这个时间范围。）")
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（小艇入水到小艇落座是指小艇入水动作发生到小艇落座动作发生的整个时间范围，使用函数计算这段时间内的能耗时应该传入这个时间范围。）"
+        )
     if "数据" in enhanced_prompt and "缺失" in enhanced_prompt:
-        enhanced_prompt = (enhanced_prompt+ "（问题中给出的数据表名称可能有误，请严格按照之前给出的数据表名来查询。）")
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（问题中给出的数据表名称可能有误，请严格按照之前给出的数据表名来查询。）"
+        )
+    if "从ON DP到OFF DP期间" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（应考虑所有ON_DP到OFF_DP的范围。）"
+    if "1~4号" in enhanced_prompt:
+        enhanced_prompt = enhanced_prompt + "（若问题没特别说明，则取总值）"
+    if "A架的总能耗" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt + "（A架的总能耗是指一号门架和二号门架的能耗总和。）"
+        )
+    if "回收" in enhanced_prompt and "布放" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（深海作业分为下放（布放）阶段和回收阶段，一般下放阶段发生在回收阶段之前。）"
+        )
 
     print("! 增强提示词：", enhanced_prompt)
     return enhanced_prompt
@@ -335,12 +368,14 @@ def get_answer(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 3
+    QUESTION = 62
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
     answer = get_answer(question)
+    while not answer:
+        answer = get_answer(question)
 
     print("*******************最终答案***********************")
     print(answer)

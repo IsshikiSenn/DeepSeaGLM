@@ -331,28 +331,49 @@ def create_annotations():
 
     descriptions = []
     for file_name in files:
+        if file_name == "设备参数详情表":
+            continue
         df = pd.read_csv(f"{folder_path}/{file_name}.csv")
         columns = df.columns.tolist()
-        annotations = [field_dict.get(col, "无注释") for col in columns]
-        descriptions.append(
-            {"数据表名": file_name, "字段名": columns, "字段含义": annotations}
-        )
+        column_list = []
+        for col in columns:
+            if col == "Unnamed: 0":
+                continue
+            annotation = field_dict.get(col, "无注释")
+            column_list.append({"字段名": col, "字段含义": annotation})
+        descriptions.append({"数据表名": file_name, "字段列表": column_list})
 
     # Customize specific tables
     for item in descriptions:
         if item["数据表名"] == "Ajia_plc_1":
-            item["字段含义"][
-                -2
+            item["字段列表"][-2][
+                "字段含义"
             ] = "A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回"
-        item["字段含义"][-1] = "标记是否有电流"
+            item["字段列表"][-1][
+                "字段含义"
+            ] = "标记是否有电流"
         if item["数据表名"] == "device_13_11_meter_1311":
-            item["字段含义"][
-                -1
+            item["字段列表"][-1][
+                "字段含义"
             ] = "折臂吊车及小艇动作,包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座"
         if item["数据表名"] == "Port3_ksbg_9":
-            item["字段含义"][
-                -1
+            item["字段列表"][-1][
+                "字段含义"
             ] = "DP动作,包括OFF_DP和ON_DP,若问题中无特别说明，则ON_DP表示深海作业A的作业开始"
+    
+    df1 = pd.read_excel(f"{RAW_DATA_PATH}设备参数详情.xlsx", sheet_name="字段释义")
+    df1["含义1"] = df1["含义"].fillna("") + "," + df1["备注"].fillna("")
+    column_names = list(df1["字段"])
+    column_meanings = list(df1["含义1"])
+    dict_device = {
+        "数据表名": "设备参数详情表",
+        "字段列表": [{"字段名": column_names[i], "字段含义": column_meanings[i]} for i in range(len(column_names))],
+    }
+    # 修改字段含义列表的第二个值
+    dict_device["字段列表"][
+        1
+    ]["字段含义"] = "参数中文名,值包含一号柴油发电机组滑油压力、停泊/应急发电机组、一号柴油发电机组滑油压力等"
+    descriptions.append(dict_device)
 
     with open("dict.json", "w", encoding="utf-8") as f:
         json.dump(descriptions, f, ensure_ascii=False, indent=4)
@@ -1099,43 +1120,3 @@ df_field_dict["字段含义_new"] = df_field_dict["字段含义"] + df_field_dic
 )
 # 将两列转换为字典
 field_dict = df_field_dict.set_index("字段名")["字段含义_new"].to_dict()
-
-
-# 使用示例
-
-os.makedirs(USE_DATA_PATH, exist_ok=True)
-result = process_folder(USE_DATA_PATH)
-result = [item for item in result if item["数据表名"] != "设备参数详情表"]
-for item in result:
-    if item["数据表名"] == "Ajia_plc_1":
-        item["字段含义"][
-            -2
-        ] = "A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回"
-        item["字段含义"][-1] = "标记是否有电流"
-    if item["数据表名"] == "device_13_11_meter_1311":
-        item["字段含义"][
-            -1
-        ] = "折臂吊车及小艇动作,包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座"
-    if item["数据表名"] == "Port3_ksbg_9":
-        item["字段含义"][
-            -1
-        ] = "DP动作,包括OFF_DP和ON_DP,若问题中无特别说明，则ON_DP表示深海作业A的作业开始"
-
-df1 = pd.read_excel(f"{RAW_DATA_PATH}设备参数详情.xlsx", sheet_name="字段释义")
-df1["含义1"] = df1["含义"].fillna("") + "," + df1["备注"].fillna("")
-dict_device = {
-    "数据表名": "设备参数详情表",
-    "字段名": list(df1["字段"]),
-    "字段含义": list(df1["含义1"]),
-}
-# 修改字段含义列表的第二个值
-dict_device["字段含义"][
-    1
-] = "参数中文名,值包含一号柴油发电机组滑油压力、停泊/应急发电机组、一号柴油发电机组滑油压力等"
-result.append(dict_device)
-
-# 假设这是你的列表数据
-data_list = result
-# 将列表存入 JSON 文件
-with open("dict.json", "w", encoding="utf-8") as f:
-    json.dump(data_list, f, ensure_ascii=False, indent=4)
