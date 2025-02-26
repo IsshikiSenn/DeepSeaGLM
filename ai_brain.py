@@ -497,7 +497,7 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
 
 def run_conversation_xietong(question):
     question = enhanced(question)
-    content_p_1, filtered_tool = select_api_based_on_question(question, tools.tools_all)
+    content_p_1, filtered_tool, temple = select_api_based_on_question(question, tools.tools_all)
     print("content_p_1:", content_p_1)
     print("filtered_tool:", [tool["function"]["name"] for tool in filtered_tool])
     answer, select_result = get_answer_2(
@@ -541,13 +541,13 @@ def get_answer_subtask_way(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 100
+    QUESTION = 96
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
-    answer = get_answer_subtask_way(question)
-    # answer = get_answer_normal_way(question)
+    # answer = get_answer_subtask_way(question)
+    answer = get_answer_normal_way(question)
     while not answer:
         answer = get_answer_normal_way(question)
 
