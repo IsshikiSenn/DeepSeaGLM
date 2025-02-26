@@ -1,4 +1,5 @@
 import json
+import re
 
 from zhipuai import ZhipuAI
 
@@ -92,11 +93,11 @@ def get_answer_2(question, tools, api_look: bool = True):
             },
             {
                 "role": "user",
-                "content": f"现在需要回答这个问题{question}可以使用的工具函数有{filtered_tools}请先结合提供的工具函数深度思考，详细说明如何使用以及解答思路，不需要做出最终的回答。",
+                "content": f"现在需要回答这个问题{question}可以使用的工具函数已给出。请先结合提供的工具函数与说明，深度思考并详细说明使用工具函数的步骤以及解答思路。不要编写任何代码！",
             },
         ]
         # 第一次调用模型
-        response = glm4_create(6, messages)
+        response = glm4_create(6, messages, filtered_tools)
         messages.append(response.choices[0].message.model_dump())
         function_results = []
         # 最大迭代次数
@@ -140,7 +141,7 @@ def get_answer_2(question, tools, api_look: bool = True):
                 messages.append(
                     {
                         "role": "user",
-                        "content": "现在请使用函数完成回答。若已完成回答，请只输出'已完成回答'。否则请继续推理，若有需要则调用函数。",
+                        "content": "继续解答或调用工具函数。若已完成回答，只输出'已完成回答'。注意，不要假设结果！",
                     }
                 )
                 print(f"第{iteration}次调用模型")
@@ -347,10 +348,10 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = (
             enhanced_prompt + "（A架的总能耗是指一号门架和二号门架的能耗总和。）"
         )
-    if "回收" in enhanced_prompt and "布放" in enhanced_prompt:
+    if "回收" in enhanced_prompt or "布放" in enhanced_prompt:
         enhanced_prompt = (
             enhanced_prompt
-            + "（深海作业分为下放（布放）阶段和回收阶段，一般下放阶段发生在回收阶段之前。）"
+            + "（每一天的深海作业分为下放（布放）阶段和回收阶段，一般下放阶段发生在回收阶段之前。）"
         )
     if "报警" in enhanced_prompt:
         enhanced_prompt = (
@@ -365,6 +366,15 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
         enhanced_prompt = (
             enhanced_prompt
             + "（计算时间差前先说明发生的动作以及要使用的时间，使用工具函数计算时间差时注意输入的两个时间的先后。）"
+        )
+    if re.search(r"..:..", enhanced_prompt):
+        enhanced_prompt = (
+            enhanced_prompt
+            + "（问题中使用的时间格式如10:00代表10点0分，在比较时间前后时注意。）"
+        )
+    if "假设" in enhanced_prompt:
+        enhanced_prompt = (
+            enhanced_prompt + "（若查询到的数据不足以回答问题，则允许你进行猜测。）"
         )
 
     print("! 增强提示词：", enhanced_prompt)
@@ -394,7 +404,7 @@ def get_answer(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 31
+    QUESTION = 2
 
     with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]

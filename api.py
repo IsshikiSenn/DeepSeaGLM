@@ -1088,12 +1088,15 @@ def get_work_time(start_time, end_time):
     Returns:
         list of dict: 包含作业开始时间和结束时间的字典列表。
     """
-    action_ajia = get_device_status_by_time_range(start_time, end_time, "A架")[
-        "正在进行的关键动作"
-    ]
-    action_dp = get_device_status_by_time_range(start_time, end_time, "定位设备")[
-        "正在进行的关键动作"
-    ]
+    try:
+        action_ajia = get_device_status_by_time_range(start_time, end_time, "A架")[
+            "正在进行的关键动作"
+        ]
+        action_dp = get_device_status_by_time_range(start_time, end_time, "定位设备")[
+            "正在进行的关键动作"
+        ]
+    except Exception as e:
+        return {"result": "没有进行作业。"}
 
     action_ajia = [
         action
