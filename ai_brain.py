@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 
 from zhipuai import ZhipuAI
 
@@ -404,9 +405,9 @@ def get_answer(question):
 
 if __name__ == "__main__":
     # 问题编号
-    QUESTION = 2
+    QUESTION = int(sys.argv[1])
 
-    with open("NexAI_result.jsonl", "r", encoding="utf-8") as file:
+    with open("question.jsonl", "r", encoding="utf-8") as file:
         question_list = [json.loads(line.strip()) for line in file]
     question = question_list[QUESTION - 1]["question"]
     answer = get_answer(question)
@@ -416,8 +417,8 @@ if __name__ == "__main__":
     print("*******************最终答案***********************")
     print(answer)
 
-    question_list[QUESTION - 1]["answer"] = answer
-
     with open("NexAI_result.jsonl", "w", encoding="utf-8") as file:
+        question_list = [json.loads(line.strip()) for line in file]
+        question_list[QUESTION - 1]["answer"] = answer
         for item in question_list:
             file.write(json.dumps(item, ensure_ascii=False) + "\n")

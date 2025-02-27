@@ -1,5 +1,6 @@
+import json
+
 import pandas as pd
-from field_dict import field_dict
 
 
 def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
@@ -59,7 +60,9 @@ def calculate_uptime(start_time, end_time, shebeiname="折臂吊车"):
             end_uptime = row["csvTime"]
             duration = end_uptime - start_uptime
             count += 1
-            uptime_list.append({f"第{count}次开机时长": int(duration.total_seconds() / 60)})
+            uptime_list.append(
+                {f"第{count}次开机时长": int(duration.total_seconds() / 60)}
+            )
             total_duration += duration
             start_uptime = None
 
@@ -1064,6 +1067,8 @@ def get_field_dict():
     Returns:
         dict: 包含字段名和字段中文名的字典。
     """
+    with open("dict.json", "r", encoding="utf-8") as f:
+        field_dict = json.load(f)
     return field_dict
 
 
