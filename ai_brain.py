@@ -4,7 +4,7 @@ import re
 from zhipuai import ZhipuAI
 
 import api
-import tools
+import tools_all
 from initial_prompt import initial_prompt
 
 function_map = {
@@ -383,7 +383,7 @@ def enhanced(prompt: str, context=None, instructions=None, modifiers=None):
 
 def run_conversation_xietong(question):
     question = enhanced(question)
-    content_p_1, filtered_tool = select_api_based_on_question(question, tools.tools_all)
+    content_p_1, filtered_tool = select_api_based_on_question(question, tools_all.tools_all)
     print("content_p_1:", content_p_1)
     print("filtered_tool:", [tool["function"]["name"] for tool in filtered_tool])
     answer, select_result = get_answer_2(
