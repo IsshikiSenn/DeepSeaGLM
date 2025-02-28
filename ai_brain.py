@@ -2,6 +2,7 @@ import json
 import re
 import sys
 
+import dotenv
 from zhipuai import ZhipuAI
 
 import api
@@ -41,7 +42,7 @@ function_map = {
 
 def create_chat_completion(messages, model="glm-4-plus"):
     print("发起AI对话")
-    client = ZhipuAI(api_key="6cf617672cae4afa9a280657a87beccb.m5ii3yJ1p3E42abg")
+    client = ZhipuAI()
     response = client.chat.completions.create(
         model=model, stream=False, messages=messages
     )
@@ -67,7 +68,7 @@ def choose_table(question):
 
 def glm4_create(max_attempts, messages, tools=None, model="glm-4-plus"):
     print("发起AI对话")
-    client = ZhipuAI(api_key="6cf617672cae4afa9a280657a87beccb.m5ii3yJ1p3E42abg")
+    client = ZhipuAI()
     for attempt in range(max_attempts):
         response = client.chat.completions.create(
             model=model,
@@ -404,6 +405,8 @@ def get_answer(question):
 
 
 if __name__ == "__main__":
+    dotenv.load_dotenv()
+
     # 问题编号
     QUESTION = int(sys.argv[1])
 

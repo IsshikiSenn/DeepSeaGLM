@@ -1,7 +1,10 @@
-import json
 import concurrent.futures as cf
-import ai_brain
+import json
 import time
+
+import dotenv
+
+import ai_brain
 
 
 def process_one(question_json):
@@ -43,6 +46,8 @@ def main():
 
 
 if __name__ == "__main__":
+    dotenv.load_dotenv()
+
     start_time = time.time()  # 记录开始时间
     main()
     end_time = time.time()  # 记录结束时间

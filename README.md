@@ -29,6 +29,8 @@
 ├── data/                       # 数据处理的中间结果
 ├── database_in_use/            # 处理后的数据表
 ├── raw_data/                   # 原始数据
+├── .env                        # 环境变量文件
+├── .gitignore                  # git忽略文件
 ├── ai_brain.py                 # 大模型API调用模块
 ├── api.py                      # 自定义工具函数模块
 ├── data_process.py             # 数据预处理脚本
@@ -51,7 +53,15 @@
 pip install -r requirements.txt
 ```
 
-### 2.运行预处理程序（可选）
+### 2.填写API_KEY
+
+在`.env`文件中填写`ZHIPUAI_API_KEY`。
+
+```plaintext
+ZHIPUAI_API_KEY = <your_api_key>
+```
+
+### 3.运行预处理程序（可选）
 
 项目中的数据已经处理好，如果需要重新处理数据，可以运行：
 
@@ -61,11 +71,11 @@ python data_process.py
 
 这里会生成`dict.json`文件。
 
-### 3.输入问题文件
+### 4.输入问题文件
 
 将想要回答的问题保存在`question.jsonl`文件中。
 
-### 4.运行推理程序
+### 5.运行推理程序
 
 ```bash
 python run.py
@@ -73,7 +83,7 @@ python run.py
 
 这将会执行主函数，对`question.jsonl`中的所有问题进行回答，生成`NexAI_result.jsonl`文件。
 
-### 5.运行单个问题（可选）
+### 6.运行单个问题（可选）
 
 对于想要单独回答的问题，可以运行：
 
