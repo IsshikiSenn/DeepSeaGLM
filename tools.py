@@ -893,9 +893,11 @@ def get_field_dict():
 def sum_two(a: float, b: float):
     """
     计算两个元素之和。
+
     Args:
-        a(float): 第一个元素。
-        b(float): 第二个元素。
+        a (float): 第一个元素。
+        b (float): 第二个元素。
+
     Returns:
         float: 两个元素之和。
     """
@@ -980,13 +982,15 @@ def get_work_time(start_time, end_time):
 
 
 @tool(parse_docstring=True)
-def find_missing_records(table_name: str, start_time, end_time):
+def find_missing_records(table_name: str, start_time: str, end_time: str):
     """
     在指定时间范围内，查找指定数据表中缺失的记录数量。
+
     Args:
         table_name (str): 要查找的数据表名称，要带上'.csv'后缀。
         start_time (str): 要查询的时间范围的开始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 要查询的时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
+
     Returns:
         dict: 包含缺失记录数量的字典。
     """
@@ -1162,16 +1166,18 @@ def calculate_total_rudder_energy(start_time, end_time):
 
 @tool(parse_docstring=True)
 def count_swing_with_rule(
-    start_time, end_time, side: str, front_angle: float, back_angle: float
+    start_time: str, end_time: str, side: str, front_angle: float, back_angle: float
 ):
     """
     计算在给定时间范围内，A架的摆动次数，从超过正向摆动阈值到超过负向摆动阈值可以记为一次完整的摆动（反之亦然）。
+
     Args:
         start_time (str): 起始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         side (str): 用来判断摆动的位置，输入'左舷'或'右舷'。
         front_angle (float): 正向摆动阈值。
         back_angle (float): 负向摆动阈值。
+
     Returns:
         dict: 包含摆动次数的字典。
     """
@@ -1259,14 +1265,16 @@ def count_swing_with_rule(
 
 
 @tool(parse_docstring=True)
-def count_swing_with_threshold(start_time, end_time, side: str, threshold):
+def count_swing_with_threshold(start_time: str, end_time: str, side: str, threshold: float):
     """
     计算在给定时间范围内，A架的摆动次数，同一方向上摆动超过指定阈值算作一次摆动。
+
     Args:
         start_time (str): 起始时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         end_time (str): 结束时间，格式为 'YYYY-MM-DD HH:MM:SS'。
         side (str): 用来判断摆动的位置，输入'左舷'或'右舷'。
         threshold (float): 摆动幅度的阈值。
+
     Returns:
         dict: 包含摆动次数的字典。
     """
