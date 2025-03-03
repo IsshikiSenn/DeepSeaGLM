@@ -1,8 +1,8 @@
 """数据预处理脚本"""
 
+import json
 import os
 from collections import defaultdict
-from typing import Literal
 
 import pandas as pd
 
@@ -63,8 +63,12 @@ def process_ajia_status(steady_threshold: int = 69, steady_window: int = 3) -> N
     df_ajia = pd.read_csv(f"{MID_DATA_PATH}Ajia_plc_1.csv", index_col=False)
 
     # 将 Ajia-3_v 和 Ajia-5_v 列转换为浮点类型，无法转换的设为 -1
-    df_ajia["Ajia-3_v"] = df_ajia["Ajia-3_v"].apply(lambda x: -1 if x == "error" else float(x))
-    df_ajia["Ajia-5_v"] = df_ajia["Ajia-5_v"].apply(lambda x: -1 if x == "error" else float(x))
+    df_ajia["Ajia-3_v"] = df_ajia["Ajia-3_v"].apply(
+        lambda x: -1 if x == "error" else float(x)
+    )
+    df_ajia["Ajia-5_v"] = df_ajia["Ajia-5_v"].apply(
+        lambda x: -1 if x == "error" else float(x)
+    )
     df_ajia = df_ajia.apply(adjust_values, axis=1)
 
     # 初始化 action_ajia 列，默认值为 'False'
@@ -209,14 +213,18 @@ def process_ajia_status(steady_threshold: int = 69, steady_window: int = 3) -> N
                     last_not_steady_index = index
                 else:  # 此时刻为稳定值，记录连续稳定值
                     steady_count += 1
-                    if steady_count >= steady_window or index == end_index - 1:  # 连续稳定值达到阈值，改为稳定状态
+                    if (
+                        steady_count >= steady_window or index == end_index - 1
+                    ):  # 连续稳定值达到阈值，改为稳定状态
                         df_ajia.loc[index_max, "current_status_ajia"] = (
                             "峰值"
                             if df_ajia.loc[index_max, "current_status_ajia"] == "False"
                             else "上升值 峰值"
                         )  # 标记峰值
                         steady = True
-                        df_ajia.loc[last_not_steady_index + 1, "current_status_ajia"] = "稳定值"
+                        df_ajia.loc[
+                            last_not_steady_index + 1, "current_status_ajia"
+                        ] = "稳定值"
                         rise = False
                         steady_count = 0
             index += 1
@@ -228,7 +236,9 @@ def process_ajia_status(steady_threshold: int = 69, steady_window: int = 3) -> N
     df_ajia.to_csv(f"{USE_DATA_PATH}Ajia_plc_1.csv", index=False)
 
 
-def process_zhebidiaoche_status(steady_threshold: int = 7, steady_window: int = 3) -> None:
+def process_zhebidiaoche_status(
+    steady_threshold: int = 7, steady_window: int = 3
+) -> None:
     """
     判断折臂吊车开关机状态
 
@@ -414,6 +424,76 @@ def process_actions():
     df_all.to_csv(f"{USE_DATA_PATH}actions.csv", index=True)
 
 
+def process_field_dict():
+    """处理字段释义表"""
+    # 读取csv文件
+    df_field_dict = pd.read_csv(
+        f"{RAW_DATA_PATH}字段释义.csv", encoding="gbk", index_col=0
+    )
+
+    df_field_dict["字段含义_new"] = (
+        df_field_dict["字段含义"]
+        + df_field_dict["单位"].apply(lambda x: f",单位:{x}" if pd.notnull(x) else "")
+        + df_field_dict["备注"].apply(lambda x: f",备注:{x}" if pd.notnull(x) else "")
+    )
+    field_dict = df_field_dict.set_index("字段名")["字段含义_new"].to_dict()
+
+    files = [f.split(".")[0] for f in os.listdir(USE_DATA_PATH) if f.endswith(".csv")]
+
+    descriptions = []
+    for file_name in files:
+        if file_name == "设备参数详情表":
+            continue
+        df = pd.read_csv(f"{USE_DATA_PATH}/{file_name}.csv")
+        columns = df.columns.tolist()
+        column_list = []
+        for col in columns:
+            if col == "Unnamed: 0":
+                continue
+            annotation = field_dict.get(col, "无注释")
+            column_list.append({"字段名": col, "字段含义": annotation})
+        descriptions.append({"数据表名": file_name, "字段列表": column_list})
+
+    for table in descriptions:
+        for field in table["字段列表"]:
+            if field["字段名"] == "action_ajia":
+                field["字段含义"] = "A架动作，包括A架关机、A架开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回"
+            elif field["字段名"] == "current_status_ajia":
+                field["字段含义"] = "A架电流状态,包括上升值（稳定之后的数值上升的第一个值）、峰值（数值上升期间最大的值）、稳定值（下降变为稳定的第一个值）"
+            elif field["字段名"] == "action_zhebidiaoche":
+                field["字段含义"] = "折臂吊车动作，包括折臂吊车关机,折臂吊车开机,小艇检查完毕,小艇入水,小艇落座"
+            elif field["字段名"] == "current_status_zhebidiaoche":
+                field["字段含义"] = "折臂吊车电流状态,包括最后高电流值（电流数值上升并下降的最后一个高电流值）"
+            elif field["字段名"] == "action_dp":
+                field["字段含义"] = "定位设备动作，包括ON DP和OFF DP,若问题中无特别说明，则ON DP表示深海作业A的作业开始"
+            elif field["字段名"] == "check_current_presence":
+                field["字段含义"] = "A架电流检查状态,包括有电流和无电流"
+
+    df_device_field = pd.read_excel(
+        f"{RAW_DATA_PATH}设备参数详情.xlsx", sheet_name="字段释义"
+    )
+    df_device_field["含义1"] = (
+        df_device_field["含义"].fillna("") + "," + df_device_field["备注"].fillna("")
+    )
+    column_names = list(df_device_field["字段"])
+    column_meanings = list(df_device_field["含义1"])
+    dict_device = {
+        "数据表名": "设备参数详情表",
+        "字段列表": [
+            {"字段名": column_names[i], "字段含义": column_meanings[i]}
+            for i in range(len(column_names))
+        ],
+    }
+    # 修改字段含义列表的第二个值
+    dict_device["字段列表"][1][
+        "字段含义"
+    ] = "参数中文名,值包含一号柴油发电机组滑油压力、停泊/应急发电机组、一号柴油发电机组滑油压力等"
+    descriptions.append(dict_device)
+
+    with open("dict.json", "w", encoding="utf-8") as f:
+        json.dump(descriptions, f, ensure_ascii=False, indent=4)
+
+
 if __name__ == "__main__":
     # # 合并CSV文件
     # merge_csv_files(RAW_DATA_PATH, MID_DATA_PATH)
@@ -426,10 +506,12 @@ if __name__ == "__main__":
     # device_param_info.to_csv(f"{MID_DATA_PATH}设备参数详情表.csv", index=False)
     # device_param_info.to_csv(f"{USE_DATA_PATH}设备参数详情表.csv", index=False)
 
-    process_ajia_status()
+    # process_ajia_status()
 
     # process_zhebidiaoche_status()
 
     # process_dp_status()
 
-    process_actions()
+    # process_actions()
+
+    process_field_dict()

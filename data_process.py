@@ -349,9 +349,7 @@ def create_annotations():
             item["字段列表"][-2][
                 "字段含义"
             ] = "A架动作,包括关机、开机、A架摆出、缆绳挂妥、征服者出水、征服者落座、征服者起吊、征服者入水、缆绳解除、A架摆回"
-            item["字段列表"][-1][
-                "字段含义"
-            ] = "标记是否有电流"
+            item["字段列表"][-1]["字段含义"] = "标记是否有电流"
         if item["数据表名"] == "device_13_11_meter_1311":
             item["字段列表"][-1][
                 "字段含义"
@@ -360,19 +358,22 @@ def create_annotations():
             item["字段列表"][-1][
                 "字段含义"
             ] = "DP动作,包括OFF_DP和ON_DP,若问题中无特别说明，则ON_DP表示深海作业A的作业开始"
-    
+
     df1 = pd.read_excel(f"{RAW_DATA_PATH}设备参数详情.xlsx", sheet_name="字段释义")
     df1["含义1"] = df1["含义"].fillna("") + "," + df1["备注"].fillna("")
     column_names = list(df1["字段"])
     column_meanings = list(df1["含义1"])
     dict_device = {
         "数据表名": "设备参数详情表",
-        "字段列表": [{"字段名": column_names[i], "字段含义": column_meanings[i]} for i in range(len(column_names))],
+        "字段列表": [
+            {"字段名": column_names[i], "字段含义": column_meanings[i]}
+            for i in range(len(column_names))
+        ],
     }
     # 修改字段含义列表的第二个值
-    dict_device["字段列表"][
-        1
-    ]["字段含义"] = "参数中文名,值包含一号柴油发电机组滑油压力、停泊/应急发电机组、一号柴油发电机组滑油压力等"
+    dict_device["字段列表"][1][
+        "字段含义"
+    ] = "参数中文名,值包含一号柴油发电机组滑油压力、停泊/应急发电机组、一号柴油发电机组滑油压力等"
     descriptions.append(dict_device)
 
     with open("dict.json", "w", encoding="utf-8") as f:
@@ -1105,18 +1106,3 @@ df_zhebidiaoche.to_csv(f"{USE_DATA_PATH}device_13_11_meter_1311.csv", index=Fals
 
 # Pre3: Data Annotations
 create_annotations()
-
-
-df_field_dict = pd.read_csv(f"{RAW_DATA_PATH}字段释义.csv", encoding="gbk")
-# 检查某一列是否有重复值
-column_name = "字段名"
-value_counts = df_field_dict[column_name].value_counts()
-if any(value_counts > 1):
-    print(f"列 '{column_name}' 中存在重复值。")
-else:
-    print(f"列 '{column_name}' 中没有重复值。")
-df_field_dict["字段含义_new"] = df_field_dict["字段含义"] + df_field_dict["单位"].apply(
-    lambda x: ",单位:" + x if pd.notnull(x) else ""
-)
-# 将两列转换为字典
-field_dict = df_field_dict.set_index("字段名")["字段含义_new"].to_dict()
